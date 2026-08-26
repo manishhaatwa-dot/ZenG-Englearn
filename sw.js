@@ -1,187 +1,70 @@
 // =========================================================
 // ZenG English Learn
-// Stable PWA Service Worker
+// Stable Service Worker
 // =========================================================
 
-const CACHE_NAME =
-  "zeng-englearn-shell-v3";
-
-
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./css/style.css"
-];
+const CACHE_NAME = "zeng-englearn-shell-v4";
 
 
 // =========================================================
 // INSTALL
 // =========================================================
 
-self.addEventListener(
-  "install",
-  (event) => {
+self.addEventListener("install", (event) => {
 
-    event.waitUntil(
+  event.waitUntil(
+    self.skipWaiting()
+  );
 
-      caches.open(
-        CACHE_NAME
-      )
-      .then((cache) => {
-
-        return cache.addAll(
-          APP_SHELL
-        );
-
-      })
-      .then(() => {
-
-        return self.skipWaiting();
-
-      })
-
-    );
-
-  }
-);
+});
 
 
 // =========================================================
 // ACTIVATE
 // =========================================================
 
-self.addEventListener(
-  "activate",
-  (event) => {
+self.addEventListener("activate", (event) => {
 
-    event.waitUntil(
+  event.waitUntil(
 
-      caches.keys()
-        .then((cacheNames) => {
+    caches.keys()
+      .then((cacheNames) => {
 
-          return Promise.all(
+        return Promise.all(
 
-            cacheNames
-              .filter(
-                (cacheName) =>
-                  cacheName !==
-                  CACHE_NAME
-              )
-              .map(
-                (cacheName) =>
-                  caches.delete(
-                    cacheName
-                  )
-              )
+          cacheNames
+            .filter(
+              (cacheName) =>
+                cacheName !== CACHE_NAME
+            )
+            .map(
+              (cacheName) =>
+                caches.delete(cacheName)
+            )
 
-          );
-
-        })
-        .then(() => {
-
-          return self.clients.claim();
-
-        })
-
-    );
-
-  }
-);
-
-
-// =========================================================
-// FETCH
-// =========================================================
-
-self.addEventListener(
-  "fetch",
-  (event) => {
-
-    const request =
-      event.request;
-
-
-    // Only GET requests
-    if (
-      request.method !== "GET"
-    ) {
-      return;
-    }
-
-
-    const requestURL =
-      new URL(
-        request.url
-      );
-
-
-    // -----------------------------------------------------
-    // Only handle files from our own GitHub Pages origin.
-    // Firebase/CDN requests must go directly to network.
-    // -----------------------------------------------------
-
-    if (
-      requestURL.origin !==
-      self.location.origin
-    ) {
-
-      return;
-
-    }
-
-
-    event.respondWith(
-
-      caches.match(
-        request
-      )
-      .then((cachedResponse) => {
-
-        if (
-          cachedResponse
-        ) {
-
-          return cachedResponse;
-
-        }
-
-
-        return fetch(
-          request
         );
 
       })
-      .catch(() => {
+      .then(() => {
 
-        // -------------------------------------------------
-        // Offline navigation fallback
-        // -------------------------------------------------
-
-        if (
-          request.mode ===
-          "navigate"
-        ) {
-
-          return caches.match(
-            "./index.html"
-          );
-
-        }
-
-
-        return new Response(
-          "",
-          {
-            status: 503,
-            statusText:
-              "Offline"
-          }
-        );
+        return self.clients.claim();
 
       })
 
-    );
+  );
 
-  }
-);
+});
+
+
+// =========================================================
+// IMPORTANT
+// =========================================================
+//
+// No fetch interception.
+//
+// Firebase modules, application JS, CSS, HTML and external
+// Firebase CDN files will be loaded directly by the browser.
+//
+// Fetch interception will be added again later only after
+// the basic application is completely stable.
+//

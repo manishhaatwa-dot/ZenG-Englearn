@@ -1,0 +1,132 @@
+rules_version = '2';
+
+service cloud.firestore {
+
+  match /databases/{database}/documents {
+
+
+    // =====================================================
+    // HELPER FUNCTIONS
+    // =====================================================
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+
+    function isOwner(uid) {
+      return signedIn()
+        && request.auth.uid == uid;
+    }
+
+
+    // =====================================================
+    // USER PROFILES
+    // =====================================================
+
+    match /zeng_englearn_users/{uid} {
+
+      // ---------------------------------------------------
+      // READ
+      // ---------------------------------------------------
+      //
+      // Authenticated users can read profiles.
+      // Later, blocked-user filtering will be handled by
+      // the application + dedicated security checks.
+      //
+
+      allow read:
+        if signedIn();
+
+
+      // ---------------------------------------------------
+      // CREATE
+      // ---------------------------------------------------
+
+      allow create:
+        if isOwner(uid)
+
+        // UID in document must match authenticated UID.
+        && request.resource.data.uid == uid
+
+        // Login ID must be supplied during registration.
+        && request.resource.data.loginId is string
+
+        && request.resource.data.loginId.size() >= 4
+
+        && request.resource.data.loginId.size() <= 24
+
+        // Initial name-change count must be zero.
+        && request.resource.data.nameChangeCount == 0
+
+        // New account must start as active.
+        && request.resource.data.accountStatus == "active";
+
+
+      // ---------------------------------------------------
+      // UPDATE
+      // ---------------------------------------------------
+
+      allow update:
+        if isOwner(uid)
+
+        // UID can never be changed.
+        && request.resource.data.uid
+           == resource.data.uid
+
+        // Permanent Login ID.
+        && request.resource.data.loginId
+           == resource.data.loginId
+
+        // Original creation time cannot be changed.
+        && request.resource.data.createdAt
+           == resource.data.createdAt
+
+        // Name changes can only move forward.
+        && request.resource.data.nameChangeCount
+           >= resource.data.nameChangeCount
+
+        // Maximum three name changes.
+        && request.resource.data.nameChangeCount
+           <= 3
+
+        // Name-change count cannot jump by more than one
+        // in a single normal client update.
+        && request.resource.data.nameChangeCount
+           <= resource.data.nameChangeCount + 1
+
+        // Account status may only use allowed values.
+        && request.resource.data.accountStatus
+           in ["active", "deactivated"];
+
+
+      // ---------------------------------------------------
+      // DELETE
+      // ---------------------------------------------------
+      //
+      // Account deletion will later be performed through
+      // the dedicated deletion flow. Direct client deletion
+      // is disabled here so related data cannot accidentally
+      // be left behind.
+      //
+
+      allow delete:
+        if false;
+    }
+
+
+    // =====================================================
+    // EVERYTHING ELSE
+    // =====================================================
+    //
+    // New collections remain locked until their dedicated
+    // service + security rules are implemented.
+    //
+
+    match /{document=**} {
+
+      allow read, write:
+        if false;
+    }
+  }
+}

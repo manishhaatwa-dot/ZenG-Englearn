@@ -3,6 +3,7 @@
    Global App Styles
    Green / Neem Leaf Inspired Theme
    Light + Dark Mode
+   Responsive Mobile-First Layout
    ========================================================= */
 
 :root {
@@ -10,7 +11,6 @@
   --primary-dark: #0f6b35;
   --primary-light: #e7f7ed;
   --primary-soft: #f1fbf4;
-
   --accent: #42b96c;
 
   --bg: #f4fbf6;
@@ -46,17 +46,11 @@
   color-scheme: light;
 }
 
-
-/* =========================================================
-   DARK MODE
-   ========================================================= */
-
 body.dark-mode {
   --primary: #54d47f;
   --primary-dark: #39bb65;
   --primary-light: #183b26;
   --primary-soft: #14251a;
-
   --accent: #68e091;
 
   --bg: #101512;
@@ -79,7 +73,6 @@ body.dark-mode {
   color-scheme: dark;
 }
 
-
 /* =========================================================
    RESET
    ========================================================= */
@@ -94,11 +87,14 @@ html {
   width: 100%;
   min-height: 100%;
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   width: 100%;
+  min-width: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
 
   font-family:
@@ -115,7 +111,10 @@ body {
   color: var(--text);
 
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+
+  overflow-x: hidden;
 
   transition:
     background-color 0.25s ease,
@@ -132,6 +131,13 @@ select {
 button {
   border: 0;
   outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
 }
 
 img {
@@ -151,57 +157,70 @@ ol {
   list-style: none;
 }
 
-
-/* =========================================================
-   MAIN APP
-   ========================================================= */
-
 #app {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
-
-  transition:
-    background-color 0.25s ease,
-    color 0.25s ease;
 }
 
-
 /* =========================================================
-   LOADING SCREEN
+   SPLASH SCREEN
    ========================================================= */
 
 .app-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
 
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
 
-  gap: 12px;
+  overflow: hidden;
 
   background:
     radial-gradient(
-      circle at top,
-      rgba(66, 185, 108, 0.12),
-      transparent 45%
+      circle at 50% 35%,
+      rgba(66, 185, 108, 0.13),
+      transparent 38%
     ),
     var(--bg);
 
   color: var(--text);
 }
 
+.splash-content {
+  width: min(88vw, 360px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+
+  text-align: center;
+
+  padding:
+    24px
+    max(20px, env(safe-area-inset-right))
+    24px
+    max(20px, env(safe-area-inset-left));
+}
+
 .app-logo {
-  width: 68px;
-  height: 68px;
+  width: clamp(60px, 18vw, 72px);
+  height: clamp(60px, 18vw, 72px);
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  border-radius: 21px;
+  border-radius: 22px;
 
   background: linear-gradient(
     145deg,
@@ -211,49 +230,59 @@ ol {
 
   color: #ffffff;
 
-  font-size: 30px;
+  font-size: clamp(27px, 8vw, 34px);
 
   box-shadow:
     0 12px 35px rgba(22, 138, 69, 0.22);
 }
 
 .app-loading-title {
+  margin-top: 16px;
+
   color: var(--primary);
-  font-size: 21px;
+
+  font-size: clamp(20px, 6vw, 25px);
   font-weight: 800;
-  letter-spacing: -0.3px;
+
+  line-height: 1.2;
+  letter-spacing: -0.4px;
 }
 
 .app-loading-text {
+  margin-top: 8px;
+
   color: var(--text-secondary);
-  font-size: 14px;
+
+  font-size: clamp(11px, 3.2vw, 13px);
+  font-weight: 500;
+
+  line-height: 1.4;
+  letter-spacing: 0.15px;
 }
 
-
 /* =========================================================
-   COMMON PAGE CONTAINER
+   COMMON PAGE
    ========================================================= */
 
 .page {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
 
   background: var(--bg);
   color: var(--text);
-
-  transition:
-    background-color 0.25s ease,
-    color 0.25s ease;
 }
 
 .page-container {
-  width: 100%;
-  max-width: 760px;
-
+  width: min(100%, 760px);
   margin: 0 auto;
-  padding: 18px;
-}
 
+  padding:
+    18px
+    max(18px, env(safe-area-inset-right))
+    18px
+    max(18px, env(safe-area-inset-left));
+}
 
 /* =========================================================
    TOP HEADER
@@ -266,7 +295,11 @@ ol {
   display: flex;
   align-items: center;
 
-  padding: 0 16px;
+  padding:
+    0
+    max(16px, env(safe-area-inset-right))
+    0
+    max(16px, env(safe-area-inset-left));
 
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -274,24 +307,20 @@ ol {
   position: sticky;
   top: 0;
   z-index: 100;
-
-  transition:
-    background-color 0.25s ease,
-    border-color 0.25s ease;
 }
 
 .header-left {
+  min-width: 0;
+
   display: flex;
   align-items: center;
   gap: 10px;
-
-  min-width: 0;
 }
 
 .header-title {
   min-width: 0;
 
-  font-size: 19px;
+  font-size: clamp(17px, 4.5vw, 19px);
   font-weight: 750;
 
   color: var(--text);
@@ -313,17 +342,17 @@ ol {
 
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
-
 /* =========================================================
-   ICON BUTTON
+   BUTTONS
    ========================================================= */
 
 .icon-button {
   width: 42px;
   height: 42px;
+  min-width: 42px;
 
   display: inline-flex;
   align-items: center;
@@ -349,14 +378,8 @@ ol {
   transform: scale(0.92);
 }
 
-
-/* =========================================================
-   GREEN BUTTON
-   ========================================================= */
-
 .primary-button {
   min-height: 46px;
-
   padding: 0 20px;
 
   border-radius: 14px;
@@ -375,16 +398,6 @@ ol {
 
   box-shadow:
     0 6px 18px rgba(22, 138, 69, 0.18);
-
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    opacity 0.18s ease;
-}
-
-.primary-button:hover {
-  box-shadow:
-    0 8px 24px rgba(22, 138, 69, 0.25);
 }
 
 .primary-button:active {
@@ -396,14 +409,8 @@ ol {
   cursor: not-allowed;
 }
 
-
-/* =========================================================
-   SECONDARY BUTTON
-   ========================================================= */
-
 .secondary-button {
   min-height: 44px;
-
   padding: 0 18px;
 
   border: 1px solid var(--border);
@@ -415,16 +422,7 @@ ol {
   font-weight: 650;
 
   cursor: pointer;
-
-  transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease;
 }
-
-.secondary-button:hover {
-  background: var(--surface-2);
-}
-
 
 /* =========================================================
    CARD
@@ -437,31 +435,22 @@ ol {
   border-radius: var(--radius-md);
 
   background: var(--surface);
-
   box-shadow: var(--shadow-small);
-
-  transition:
-    background-color 0.25s ease,
-    border-color 0.25s ease;
 }
 
-
 /* =========================================================
-   PROFILE AVATAR
+   AVATAR
    ========================================================= */
 
 .avatar {
   width: 48px;
   height: 48px;
-
   flex-shrink: 0;
 
   border-radius: 50%;
-
   object-fit: cover;
 
   background: var(--primary-light);
-
   border: 2px solid var(--surface);
 }
 
@@ -482,7 +471,6 @@ ol {
 
 .online-dot {
   position: absolute;
-
   right: 0;
   bottom: 1px;
 
@@ -492,10 +480,8 @@ ol {
   border-radius: 50%;
 
   background: var(--online);
-
   border: 2px solid var(--surface);
 }
-
 
 /* =========================================================
    CHAT PAGE
@@ -504,6 +490,7 @@ ol {
 .chat-page {
   width: 100%;
   height: 100vh;
+  height: 100dvh;
 
   display: flex;
   flex-direction: column;
@@ -514,14 +501,14 @@ ol {
   color: var(--text);
 }
 
-
 /* =========================================================
    CHAT HEADER
    ========================================================= */
 
 .chat-header {
-  flex-shrink: 0;
+  flex: 0 0 var(--header-height);
 
+  width: 100%;
   height: var(--header-height);
 
   display: flex;
@@ -529,10 +516,13 @@ ol {
 
   gap: 10px;
 
-  padding: 0 12px;
+  padding:
+    0
+    max(12px, env(safe-area-inset-right))
+    0
+    max(12px, env(safe-area-inset-left));
 
   background: var(--surface);
-
   border-bottom: 1px solid var(--border);
 
   z-index: 20;
@@ -560,7 +550,6 @@ ol {
   margin-top: 2px;
 
   color: var(--text-muted);
-
   font-size: 12px;
 }
 
@@ -568,20 +557,26 @@ ol {
   color: var(--online);
 }
 
-
 /* =========================================================
-   CHAT MESSAGES AREA
+   CHAT MESSAGES
    ========================================================= */
 
 .chat-messages {
   position: relative;
+  z-index: 1;
 
-  flex: 1;
+  flex: 1 1 auto;
+
+  min-height: 0;
 
   overflow-y: auto;
   overflow-x: hidden;
 
-  padding: 18px 13px 16px;
+  padding:
+    18px
+    max(10px, env(safe-area-inset-right))
+    16px
+    max(10px, env(safe-area-inset-left));
 
   background:
     radial-gradient(
@@ -592,24 +587,16 @@ ol {
     var(--bg);
 
   scroll-behavior: smooth;
-
   overscroll-behavior: contain;
 
   -webkit-overflow-scrolling: touch;
 }
 
-
-/*
-   Very subtle neem/nature texture.
-   It remains readable and does not interfere with messages.
-*/
-
 .chat-messages::before {
   content: "";
 
-  position: fixed;
-
-  inset: 64px 0 0;
+  position: absolute;
+  inset: 0;
 
   pointer-events: none;
 
@@ -626,18 +613,15 @@ ol {
       var(--primary) 0,
       transparent 35%
     );
-
-  z-index: 0;
 }
 
-
 /* =========================================================
-   MESSAGE ROW
+   MESSAGE
    ========================================================= */
 
 .message-row {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 
   width: 100%;
 
@@ -654,11 +638,6 @@ ol {
   justify-content: flex-end;
 }
 
-
-/* =========================================================
-   MESSAGE BUBBLE
-   ========================================================= */
-
 .message-bubble {
   position: relative;
 
@@ -674,33 +653,21 @@ ol {
   word-wrap: break-word;
   overflow-wrap: anywhere;
 
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.045);
-
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.045);
 }
 
 .message-row.incoming .message-bubble {
   background: var(--incoming-bubble);
-
   color: var(--text);
-
   border-bottom-left-radius: 5px;
 }
 
 .message-row.outgoing .message-bubble {
   background: var(--outgoing-bubble);
-
   color: var(--outgoing-text);
-
   border-bottom-right-radius: 5px;
 }
-
-
-/* =========================================================
-   MESSAGE TEXT
-   ========================================================= */
 
 .message-text {
   display: inline;
@@ -713,22 +680,14 @@ ol {
   white-space: pre-wrap;
 }
 
-
-/* =========================================================
-   MESSAGE META
-   ========================================================= */
-
 .message-meta {
   display: inline-flex;
-
   align-items: center;
-
   gap: 3px;
 
   margin-left: 8px;
 
   vertical-align: bottom;
-
   transform: translateY(2px);
 
   white-space: nowrap;
@@ -736,17 +695,14 @@ ol {
 
 .message-time {
   font-size: 10px;
-
   opacity: 0.68;
 }
 
 .message-status {
   display: inline-flex;
-
   align-items: center;
 
   font-size: 13px;
-
   line-height: 1;
 }
 
@@ -760,80 +716,36 @@ ol {
 
 .message-edited {
   margin-left: 4px;
-
   font-size: 9px;
-
   opacity: 0.65;
 }
 
-
-/* =========================================================
-   EDITED MESSAGE
-   ========================================================= */
-
 .message-bubble.editing {
   outline: 2px solid var(--primary);
-
   outline-offset: 1px;
 }
-
-
-/* =========================================================
-   EDIT MESSAGE BAR
-   ========================================================= */
-
-.edit-message-bar {
-  flex-shrink: 0;
-
-  min-height: 48px;
-
-  display: flex;
-  align-items: center;
-
-  gap: 10px;
-
-  padding: 8px 13px;
-
-  background: var(--surface-2);
-
-  border-top: 1px solid var(--border);
-}
-
-.edit-message-label {
-  flex: 1;
-
-  min-width: 0;
-
-  color: var(--text-secondary);
-
-  font-size: 13px;
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 
 /* =========================================================
    TYPING INDICATOR
    ========================================================= */
 
 .typing-container {
-  position: relative;
-  z-index: 2;
+  flex: 0 0 auto;
 
   min-height: 30px;
 
-  padding: 2px 15px 7px;
+  padding:
+    2px
+    max(15px, env(safe-area-inset-right))
+    7px
+    max(15px, env(safe-area-inset-left));
 
   background: transparent;
 }
 
 .typing-indicator {
   display: inline-flex;
-
   align-items: center;
-
   gap: 4px;
 
   padding: 7px 11px;
@@ -841,7 +753,6 @@ ol {
   border-radius: 14px;
 
   background: var(--incoming-bubble);
-
   color: var(--text-secondary);
 
   font-size: 12px;
@@ -886,13 +797,12 @@ ol {
   }
 }
 
-
 /* =========================================================
-   EMOJI / CARTOON SHORTCUT BAR
+   EMOJI / CARTOON BAR
    ========================================================= */
 
 .emoji-bar {
-  flex-shrink: 0;
+  flex: 0 0 auto;
 
   width: 100%;
 
@@ -901,12 +811,15 @@ ol {
 
   gap: 6px;
 
-  padding: 7px 10px;
+  padding:
+    7px
+    max(10px, env(safe-area-inset-right))
+    7px
+    max(10px, env(safe-area-inset-left));
 
   overflow-x: auto;
 
   background: var(--surface);
-
   border-top: 1px solid var(--border);
 
   scrollbar-width: none;
@@ -921,6 +834,7 @@ ol {
 .emoji-button {
   width: 38px;
   height: 38px;
+  min-width: 38px;
 
   flex: 0 0 auto;
 
@@ -935,27 +849,18 @@ ol {
   font-size: 21px;
 
   cursor: pointer;
-
-  transition:
-    transform 0.15s ease,
-    background-color 0.15s ease;
 }
 
 .emoji-button:active {
   transform: scale(0.88);
 }
 
-.emoji-button:hover {
-  background: var(--primary-light);
-}
-
-
 /* =========================================================
    CHAT INPUT
    ========================================================= */
 
 .chat-input-area {
-  flex-shrink: 0;
+  flex: 0 0 auto;
 
   width: 100%;
 
@@ -965,17 +870,17 @@ ol {
   gap: 7px;
 
   padding:
-    8px 10px
-    calc(8px + env(safe-area-inset-bottom));
+    8px
+    max(10px, env(safe-area-inset-right))
+    calc(8px + env(safe-area-inset-bottom))
+    max(10px, env(safe-area-inset-left));
 
   background: var(--surface);
-
   border-top: 1px solid var(--border);
 }
 
 .chat-input-wrapper {
-  flex: 1;
-
+  flex: 1 1 auto;
   min-width: 0;
 
   display: flex;
@@ -986,14 +891,9 @@ ol {
   padding: 5px 8px;
 
   border: 1px solid var(--border);
-
   border-radius: 22px;
 
   background: var(--surface-2);
-
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
 }
 
 .chat-input-wrapper:focus-within {
@@ -1012,11 +912,9 @@ ol {
   outline: 0;
 
   background: transparent;
-
   color: var(--text);
 
   font-size: 15px;
-
   line-height: 1.4;
 }
 
@@ -1027,8 +925,9 @@ ol {
 .send-button {
   width: 44px;
   height: 44px;
+  min-width: 44px;
 
-  flex: 0 0 auto;
+  flex: 0 0 44px;
 
   display: flex;
   align-items: center;
@@ -1037,7 +936,6 @@ ol {
   border-radius: 50%;
 
   background: var(--primary);
-
   color: #ffffff;
 
   cursor: pointer;
@@ -1046,10 +944,6 @@ ol {
 
   box-shadow:
     0 5px 15px rgba(22, 138, 69, 0.20);
-
-  transition:
-    transform 0.15s ease,
-    background-color 0.15s ease;
 }
 
 .send-button:active {
@@ -1061,7 +955,6 @@ ol {
   cursor: not-allowed;
 }
 
-
 /* =========================================================
    CHAT LIST
    ========================================================= */
@@ -1071,6 +964,8 @@ ol {
 
   display: flex;
   flex-direction: column;
+
+  background: var(--surface);
 }
 
 .chat-list-item {
@@ -1081,16 +976,17 @@ ol {
 
   gap: 12px;
 
-  padding: 12px 14px;
+  padding:
+    12px
+    max(14px, env(safe-area-inset-right))
+    12px
+    max(14px, env(safe-area-inset-left));
 
   background: var(--surface);
 
   border-bottom: 1px solid var(--border);
 
   cursor: pointer;
-
-  transition:
-    background-color 0.16s ease;
 }
 
 .chat-list-item:hover {
@@ -1099,20 +995,17 @@ ol {
 
 .chat-list-content {
   flex: 1;
-
   min-width: 0;
 }
 
 .chat-list-top {
   display: flex;
   align-items: center;
-
   gap: 8px;
 }
 
 .chat-list-name {
   flex: 1;
-
   min-width: 0;
 
   color: var(--text);
@@ -1127,16 +1020,13 @@ ol {
 
 .chat-list-time {
   color: var(--text-muted);
-
   font-size: 10px;
-
   white-space: nowrap;
 }
 
 .chat-list-bottom {
   display: flex;
   align-items: center;
-
   gap: 7px;
 
   margin-top: 4px;
@@ -1144,7 +1034,6 @@ ol {
 
 .chat-list-preview {
   flex: 1;
-
   min-width: 0;
 
   color: var(--text-secondary);
@@ -1169,16 +1058,14 @@ ol {
   border-radius: 10px;
 
   background: var(--primary);
-
   color: #ffffff;
 
   font-size: 10px;
   font-weight: 750;
 }
 
-
 /* =========================================================
-   MEMBERS LIST
+   MEMBERS
    ========================================================= */
 
 .members-list {
@@ -1194,14 +1081,15 @@ ol {
 
   gap: 12px;
 
-  padding: 13px 15px;
+  padding:
+    13px
+    max(15px, env(safe-area-inset-right))
+    13px
+    max(15px, env(safe-area-inset-left));
 
   border-bottom: 1px solid var(--border);
 
   cursor: pointer;
-
-  transition:
-    background-color 0.16s ease;
 }
 
 .member-item:hover {
@@ -1210,25 +1098,20 @@ ol {
 
 .member-info {
   flex: 1;
-
   min-width: 0;
 }
 
 .member-name {
   color: var(--text);
-
   font-size: 15px;
   font-weight: 700;
 }
 
 .member-status {
   margin-top: 3px;
-
   color: var(--text-muted);
-
   font-size: 12px;
 }
-
 
 /* =========================================================
    MENU
@@ -1244,7 +1127,7 @@ ol {
   top: calc(100% + 8px);
   right: 8px;
 
-  min-width: 190px;
+  width: min(190px, calc(100vw - 24px));
 
   padding: 7px;
 
@@ -1252,7 +1135,6 @@ ol {
   border-radius: 15px;
 
   background: var(--surface);
-
   box-shadow: var(--shadow);
 
   z-index: 300;
@@ -1260,7 +1142,6 @@ ol {
 
 .menu-item {
   width: 100%;
-
   min-height: 42px;
 
   display: flex;
@@ -1273,7 +1154,6 @@ ol {
   border-radius: 10px;
 
   background: transparent;
-
   color: var(--text);
 
   text-align: left;
@@ -1289,9 +1169,8 @@ ol {
   color: var(--danger);
 }
 
-
 /* =========================================================
-   TOGGLE / DARK MODE
+   THEME TOGGLE
    ========================================================= */
 
 .theme-toggle {
@@ -1305,8 +1184,6 @@ ol {
   background: var(--border);
 
   cursor: pointer;
-
-  transition: background-color 0.2s ease;
 }
 
 .theme-toggle.active {
@@ -1330,9 +1207,8 @@ ol {
   transform: translateX(21px);
 }
 
-
 /* =========================================================
-   FORM ELEMENTS
+   FORMS
    ========================================================= */
 
 .form-group {
@@ -1366,10 +1242,6 @@ ol {
 
   background: var(--surface);
   color: var(--text);
-
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
 }
 
 .form-textarea {
@@ -1383,12 +1255,13 @@ ol {
   border-color: var(--primary);
 }
 
-
 /* =========================================================
    SEARCH
    ========================================================= */
 
 .search-box {
+  width: 100%;
+
   display: flex;
   align-items: center;
 
@@ -1406,7 +1279,6 @@ ol {
 
 .search-input {
   flex: 1;
-
   min-width: 0;
 
   border: 0;
@@ -1421,7 +1293,6 @@ ol {
 .search-input::placeholder {
   color: var(--text-muted);
 }
-
 
 /* =========================================================
    BADGES
@@ -1438,7 +1309,6 @@ ol {
   border-radius: 11px;
 
   background: var(--primary-light);
-
   color: var(--primary);
 
   font-size: 10px;
@@ -1449,7 +1319,6 @@ ol {
   background: rgba(37, 199, 106, 0.12);
   color: var(--online);
 }
-
 
 /* =========================================================
    EMPTY STATE
@@ -1491,7 +1360,6 @@ ol {
   line-height: 1.5;
 }
 
-
 /* =========================================================
    TOAST
    ========================================================= */
@@ -1500,7 +1368,7 @@ ol {
   position: fixed;
 
   left: 50%;
-  bottom: 85px;
+  bottom: calc(85px + env(safe-area-inset-bottom));
 
   transform: translateX(-50%);
 
@@ -1511,7 +1379,7 @@ ol {
 
   gap: 8px;
 
-  width: min(92%, 400px);
+  width: min(92vw, 400px);
 
   pointer-events: none;
 }
@@ -1522,7 +1390,6 @@ ol {
   border-radius: 13px;
 
   background: #1b241e;
-
   color: #ffffff;
 
   font-size: 13px;
@@ -1553,21 +1420,23 @@ ol {
   }
 }
 
-
 /* =========================================================
    MODAL
    ========================================================= */
 
 .modal-overlay {
   position: fixed;
-
   inset: 0;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  padding: 18px;
+  padding:
+    18px
+    max(18px, env(safe-area-inset-right))
+    18px
+    max(18px, env(safe-area-inset-left));
 
   background: rgba(0, 0, 0, 0.48);
 
@@ -1576,7 +1445,7 @@ ol {
 
 .modal {
   width: min(100%, 430px);
-  max-height: 90vh;
+  max-height: 90dvh;
 
   overflow-y: auto;
 
@@ -1591,10 +1460,10 @@ ol {
 }
 
 .modal-title {
+  margin-bottom: 8px;
+
   font-size: 19px;
   font-weight: 800;
-
-  margin-bottom: 8px;
 }
 
 .modal-text {
@@ -1604,13 +1473,12 @@ ol {
   line-height: 1.55;
 }
 
-
 /* =========================================================
-   BOTTOM NAVIGATION
+   BOTTOM NAV
    ========================================================= */
 
 .bottom-nav {
-  flex-shrink: 0;
+  flex: 0 0 var(--bottom-nav-height);
 
   width: 100%;
   height: var(--bottom-nav-height);
@@ -1620,11 +1488,12 @@ ol {
   justify-content: space-around;
 
   padding:
-    5px 6px
-    calc(5px + env(safe-area-inset-bottom));
+    5px
+    max(6px, env(safe-area-inset-right))
+    calc(5px + env(safe-area-inset-bottom))
+    max(6px, env(safe-area-inset-left));
 
   background: var(--surface);
-
   border-top: 1px solid var(--border);
 
   z-index: 100;
@@ -1632,7 +1501,6 @@ ol {
 
 .bottom-nav-item {
   min-width: 62px;
-
   height: 56px;
 
   display: flex;
@@ -1645,19 +1513,13 @@ ol {
   border-radius: 13px;
 
   background: transparent;
-
   color: var(--text-muted);
 
   cursor: pointer;
-
-  transition:
-    color 0.18s ease,
-    background-color 0.18s ease;
 }
 
 .bottom-nav-item.active {
   color: var(--primary);
-
   background: var(--primary-light);
 }
 
@@ -1670,9 +1532,8 @@ ol {
   font-weight: 650;
 }
 
-
 /* =========================================================
-   LEARNING TOPIC CARDS
+   LEARNING TOPICS
    ========================================================= */
 
 .topic-grid {
@@ -1714,7 +1575,6 @@ ol {
 
 .topic-title {
   color: var(--text);
-
   font-size: 14px;
   font-weight: 750;
 }
@@ -1727,7 +1587,6 @@ ol {
   font-size: 11px;
   line-height: 1.4;
 }
-
 
 /* =========================================================
    PROGRESS
@@ -1758,9 +1617,8 @@ ol {
   transition: width 0.35s ease;
 }
 
-
 /* =========================================================
-   UTILITY CLASSES
+   UTILITIES
    ========================================================= */
 
 .hidden {
@@ -1799,7 +1657,6 @@ ol {
   width: 100% !important;
 }
 
-
 /* =========================================================
    SCROLLBAR
    ========================================================= */
@@ -1822,20 +1679,42 @@ ol {
   background: var(--text-muted);
 }
 
+/* =========================================================
+   TABLETS / SMALL LAPTOPS
+   ========================================================= */
+
+@media (min-width: 601px) {
+  .page-container {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  .chat-messages {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
 
 /* =========================================================
    MOBILE
    ========================================================= */
 
 @media (max-width: 600px) {
+  :root {
+    --header-height: 60px;
+    --bottom-nav-height: 66px;
+  }
 
   .page-container {
-    padding: 13px;
+    padding:
+      13px
+      max(13px, env(safe-area-inset-right))
+      13px
+      max(13px, env(safe-area-inset-left));
   }
 
   .message-bubble {
     max-width: 84%;
-    font-size: 15px;
   }
 
   .message-text {
@@ -1843,13 +1722,19 @@ ol {
   }
 
   .chat-messages {
-    padding-left: 9px;
-    padding-right: 9px;
+    padding-top: 14px;
+    padding-bottom: 12px;
+  }
+
+  .chat-input {
+    font-size: 16px;
   }
 
   .topic-grid {
     grid-template-columns:
       repeat(2, minmax(0, 1fr));
+
+    gap: 10px;
   }
 
   .topic-card {
@@ -1857,14 +1742,20 @@ ol {
     padding: 13px;
   }
 
+  .bottom-nav-item {
+    min-width: 54px;
+  }
 }
-
 
 /* =========================================================
    SMALL PHONES
    ========================================================= */
 
 @media (max-width: 380px) {
+  :root {
+    --header-height: 58px;
+    --bottom-nav-height: 64px;
+  }
 
   .header-title {
     font-size: 17px;
@@ -1872,37 +1763,106 @@ ol {
 
   .message-bubble {
     max-width: 88%;
+    padding: 8px 10px 6px;
+  }
+
+  .message-text {
+    font-size: 14px;
   }
 
   .emoji-button {
     width: 36px;
     height: 36px;
-
+    min-width: 36px;
     font-size: 19px;
   }
 
   .send-button {
     width: 42px;
     height: 42px;
+    min-width: 42px;
+    flex-basis: 42px;
   }
 
   .bottom-nav-label {
     font-size: 9px;
   }
 
+  .bottom-nav-icon {
+    font-size: 19px;
+  }
 }
 
+/* =========================================================
+   VERY SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 330px) {
+  .page-container {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .chat-messages {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .message-bubble {
+    max-width: 91%;
+  }
+
+  .emoji-bar {
+    gap: 4px;
+  }
+
+  .emoji-button {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+  }
+
+  .bottom-nav-item {
+    min-width: 48px;
+  }
+}
+
+/* =========================================================
+   LANDSCAPE PHONES
+   ========================================================= */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .chat-header {
+    --header-height: 52px;
+  }
+
+  .chat-page {
+    height: 100dvh;
+  }
+
+  .emoji-button {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+  }
+
+  .chat-input-area {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+}
 
 /* =========================================================
    REDUCED MOTION
    ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration:
+    transition-duration: 0.01ms !important;
+  }
+}

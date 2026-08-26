@@ -1,15 +1,15 @@
 // =========================================================
 // ZenG English Learn
-// Main Application Entry
+// Main Application Controller
 // =========================================================
 
 import {
-  auth,
-  db,
-  storage,
-  realtimeDb,
-  messaging
-} from "./firebase-services.js";
+  startSessionListener
+} from "./services/session-service.js";
+
+import {
+  registerCurrentDevice
+} from "./services/notification-service.js";
 
 
 // =========================================================
@@ -18,251 +18,424 @@ import {
 
 const AppState = {
   initialized: false,
-  currentUser: null,
-  currentPage: "home",
-  darkMode: false
+  loading: true,
+
+  user: null,
+  profile: null,
+
+  currentPage: null
 };
 
 
 // =========================================================
-// DOM HELPERS
+// DOM
 // =========================================================
 
-const getApp = () => {
-  return document.getElementById("app");
-};
-
-
-const getLoadingScreen = () => {
-  return document.getElementById("appLoading");
-};
-
-
-// =========================================================
-// THEME
-// =========================================================
-
-function loadSavedTheme() {
-  try {
-    const savedTheme = localStorage.getItem(
-      "zeng_englearn_theme"
-    );
-
-    if (savedTheme === "dark") {
-      document.body.classList.add("dark-mode");
-      AppState.darkMode = true;
-      return;
-    }
-
-    if (savedTheme === "light") {
-      document.body.classList.remove("dark-mode");
-      AppState.darkMode = false;
-      return;
-    }
-
-    // Automatic system theme
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-
-    document.body.classList.toggle(
-      "dark-mode",
-      prefersDark
-    );
-
-    AppState.darkMode = prefersDark;
-
-  } catch (error) {
-    console.warn(
-      "Theme preference could not be loaded:",
-      error
-    );
-  }
-}
-
-
-// =========================================================
-// SAVE THEME
-// =========================================================
-
-function saveTheme(theme) {
-  try {
-    localStorage.setItem(
-      "zeng_englearn_theme",
-      theme
-    );
-  } catch (error) {
-    console.warn(
-      "Theme preference could not be saved:",
-      error
-    );
-  }
-}
-
-
-// =========================================================
-// THEME CONTROL
-// =========================================================
-
-function setDarkMode(enabled) {
-
-  AppState.darkMode = Boolean(enabled);
-
-  document.body.classList.toggle(
-    "dark-mode",
-    AppState.darkMode
+const appRoot =
+  document.getElementById(
+    "app"
   );
 
-  saveTheme(
-    AppState.darkMode
-      ? "dark"
-      : "light"
-  );
-}
-
 
 // =========================================================
-// AUTH STATE LISTENER
+// SPLASH
 // =========================================================
 
-function initializeAuthListener() {
+function hideSplash() {
 
-  auth.onAuthStateChanged((user) => {
-
-    AppState.currentUser = user || null;
-
-    if (user) {
-
-      console.log(
-        "ZenG user is logged in:",
-        user.uid
-      );
-
-    } else {
-
-      console.log(
-        "No ZenG user is currently logged in."
-      );
-    }
-
-  });
-}
+  const splash =
+    document.getElementById(
+      "appLoading"
+    );
 
 
-// =========================================================
-// BASIC APP INITIALIZATION
-// =========================================================
-
-async function initializeApp() {
-
-  if (AppState.initialized) {
+  if (!splash) {
     return;
   }
 
+
+  splash.style.opacity = "0";
+  splash.style.pointerEvents = "none";
+
+
+  setTimeout(() => {
+
+    if (
+      splash &&
+      splash.parentNode
+    ) {
+
+      splash.remove();
+
+    }
+
+  }, 220);
+}
+
+
+// =========================================================
+// SHOW SPLASH
+// =========================================================
+
+function showSplash() {
+
+  const splash =
+    document.getElementById(
+      "appLoading"
+    );
+
+
+  if (!splash) {
+    return;
+  }
+
+
+  splash.style.opacity = "1";
+  splash.style.pointerEvents = "auto";
+
+}
+
+
+// =========================================================
+// BASIC APP VIEW
+// =========================================================
+
+function renderAppMessage(
+  title,
+  message
+) {
+
+  if (!appRoot) {
+    return;
+  }
+
+
+  appRoot.innerHTML = `
+
+    <div class="page">
+
+      <div
+        class="page-container"
+        style="
+          min-height:100dvh;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        "
+      >
+
+        <div
+          class="card"
+          style="
+            width:min(100%,430px);
+            text-align:center;
+          "
+        >
+
+          <div
+            style="
+              font-size:38px;
+              margin-bottom:12px;
+            "
+          >
+            🌿
+          </div>
+
+          <div
+            style="
+              font-size:20px;
+              font-weight:800;
+              margin-bottom:8px;
+            "
+          >
+            ${escapeHTML(title)}
+          </div>
+
+          <div
+            style="
+              color:var(--text-secondary);
+              font-size:13px;
+              line-height:1.5;
+            "
+          >
+            ${escapeHTML(message)}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+// =========================================================
+// HTML ESCAPE
+// =========================================================
+
+function escapeHTML(
+  value
+) {
+
+  return String(
+    value ?? ""
+  )
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
+}
+
+
+// =========================================================
+// LOGGED-IN USER
+// =========================================================
+
+async function handleAuthenticatedUser(
+  session
+) {
+
+  AppState.user =
+    session.user;
+
+  AppState.profile =
+    session.profile;
+
+
+  // -------------------------------------------------------
+  // Register this device for FCM.
+  //
+  // If notification permission/VAPID key is not ready,
+  // notification-service safely returns null.
+  // -------------------------------------------------------
+
   try {
 
-    loadSavedTheme();
+    if (
+      "serviceWorker" in navigator
+    ) {
 
-    initializeAuthListener();
+      const registration =
+        await navigator.serviceWorker.ready;
 
-    // Confirm Firebase services are available.
-    // Actual feature modules will use these services.
-    void db;
-    void storage;
-    void realtimeDb;
-    void messaging;
 
-    AppState.initialized = true;
+      await registerCurrentDevice(
+        registration
+      );
 
-    console.log(
-      "ZenG English Learn initialized successfully."
+    }
+
+  } catch (error) {
+
+    console.warn(
+      "FCM device registration skipped:",
+      error
+    );
+
+  }
+
+
+  // -------------------------------------------------------
+  // Dashboard routing will be connected here.
+  // -------------------------------------------------------
+
+  AppState.currentPage =
+    "dashboard";
+
+
+  renderAppMessage(
+    "ZenG English Learn",
+    "Your dashboard is ready."
+  );
+
+}
+
+
+// =========================================================
+// LOGGED-OUT USER
+// =========================================================
+
+function handleLoggedOutUser() {
+
+  AppState.user =
+    null;
+
+  AppState.profile =
+    null;
+
+  AppState.currentPage =
+    "login";
+
+
+  renderAppMessage(
+    "Welcome to ZenG English Learn",
+    "Login and registration screen will be connected here."
+  );
+
+}
+
+
+// =========================================================
+// SESSION HANDLER
+// =========================================================
+
+async function handleSessionChange(
+  session
+) {
+
+  if (!session) {
+    return;
+  }
+
+
+  AppState.loading =
+    session.loading;
+
+
+  AppState.initialized =
+    session.initialized;
+
+
+  if (
+    session.loading
+  ) {
+
+    showSplash();
+
+    return;
+  }
+
+
+  if (
+    session.user
+  ) {
+
+    await handleAuthenticatedUser(
+      session
+    );
+
+  } else {
+
+    handleLoggedOutUser();
+
+  }
+
+
+  hideSplash();
+
+}
+
+
+// =========================================================
+// START APP
+// =========================================================
+
+function startApp() {
+
+  showSplash();
+
+
+  try {
+
+    startSessionListener(
+      async (session) => {
+
+        try {
+
+          await handleSessionChange(
+            session
+          );
+
+        } catch (error) {
+
+          console.error(
+            "App session handling error:",
+            error
+          );
+
+
+          hideSplash();
+
+
+          renderAppMessage(
+            "Something went wrong",
+            "Please refresh the app and try again."
+          );
+
+        }
+
+      }
     );
 
   } catch (error) {
 
     console.error(
-      "ZenG initialization failed:",
+      "Unable to start ZenG:",
       error
     );
 
-  } finally {
 
-    hideLoadingScreen();
+    hideSplash();
+
+
+    renderAppMessage(
+      "Unable to start app",
+      "Please refresh the page and try again."
+    );
 
   }
+
 }
 
 
 // =========================================================
-// HIDE LOADING SCREEN
-// =========================================================
-
-function hideLoadingScreen() {
-
-  const loadingScreen = getLoadingScreen();
-
-  if (!loadingScreen) {
-    return;
-  }
-
-  loadingScreen.style.opacity = "0";
-
-  loadingScreen.style.transition =
-    "opacity 180ms ease";
-
-  setTimeout(() => {
-
-    if (loadingScreen) {
-      loadingScreen.remove();
-    }
-
-  }, 180);
-}
-
-
-// =========================================================
-// GLOBAL APP OBJECT
-// =========================================================
-//
-// Future modules can use this central object without
-// creating duplicate global variables.
-//
-
-window.ZenGApp = {
-
-  state: AppState,
-
-  firebase: {
-    auth,
-    db,
-    storage,
-    realtimeDb,
-    messaging
-  },
-
-  theme: {
-    setDarkMode
-  }
-
-};
-
-
-// =========================================================
-// START APPLICATION
+// DOM READY
 // =========================================================
 
 if (
-  document.readyState === "loading"
+  document.readyState ===
+  "loading"
 ) {
 
   document.addEventListener(
     "DOMContentLoaded",
-    initializeApp,
-    { once: true }
+    startApp,
+    {
+      once: true
+    }
   );
 
 } else {
 
-  initializeApp();
+  startApp();
 
 }
+
+
+// =========================================================
+// EXPORT APP STATE
+// =========================================================
+
+export {
+  AppState
+};

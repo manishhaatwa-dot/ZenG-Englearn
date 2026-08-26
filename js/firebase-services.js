@@ -33,13 +33,28 @@ import {
 // CORE FIREBASE SERVICES
 // =========================================================
 
-const auth = getAuth(firebaseApp);
+const auth =
+  getAuth(
+    firebaseApp
+  );
 
-const db = getFirestore(firebaseApp);
 
-const storage = getStorage(firebaseApp);
+const db =
+  getFirestore(
+    firebaseApp
+  );
 
-const realtimeDb = getDatabase(firebaseApp);
+
+const storage =
+  getStorage(
+    firebaseApp
+  );
+
+
+const realtimeDb =
+  getDatabase(
+    firebaseApp
+  );
 
 
 // =========================================================
@@ -52,18 +67,47 @@ const realtimeDb = getDatabase(firebaseApp);
 
 let messaging = null;
 
-try {
-  const messagingSupported = await isSupported();
 
-  if (messagingSupported) {
-    messaging = getMessaging(firebaseApp);
+try {
+
+  const messagingSupported =
+    await isSupported();
+
+
+  if (
+    messagingSupported
+  ) {
+
+    messaging =
+      getMessaging(
+        firebaseApp
+      );
+
   }
+
 } catch (error) {
+
   console.warn(
     "Firebase Cloud Messaging is not available:",
     error
   );
+
 }
+
+
+// =========================================================
+// FIREBASE APP ALIAS
+// =========================================================
+//
+// notification-service.js expects the Firebase app to be
+// exported as "app".
+//
+// Keep "firebaseApp" too, because other files may already
+// use that name.
+//
+
+const app =
+  firebaseApp;
 
 
 // =========================================================
@@ -71,7 +115,9 @@ try {
 // =========================================================
 
 export {
+  app,
   firebaseApp,
+
   auth,
   db,
   storage,

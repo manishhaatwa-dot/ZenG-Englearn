@@ -4,16 +4,14 @@
 // =========================================================
 
 import {
-  getMessaging,
   getToken,
-  onMessage,
-  isSupported
+  onMessage
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-messaging.js";
 
 import {
-  app,
   auth,
-  db
+  db,
+  messaging
 } from "../firebase-services.js";
 
 import {
@@ -27,12 +25,8 @@ import {
 // FCM CONFIGURATION
 // =========================================================
 //
-// IMPORTANT:
-// Replace this with the PUBLIC VAPID KEY from Firebase
-// Console.
-//
-// Do NOT use a private server key here.
-// Do NOT put Firebase Admin SDK credentials here.
+// Firebase Console se actual PUBLIC VAPID key baad me
+// yahan add karenge.
 //
 
 const FCM_VAPID_KEY =
@@ -48,75 +42,15 @@ const DEVICE_TOKENS_COLLECTION =
 
 
 // =========================================================
-// INTERNAL STATE
-// =========================================================
-
-let messagingInstance = null;
-
-
-// =========================================================
 // CHECK FCM SUPPORT
 // =========================================================
 
-async function isMessagingSupported() {
+function isMessagingAvailable() {
 
-  try {
+  return Boolean(
+    messaging
+  );
 
-    return await isSupported();
-
-  } catch (error) {
-
-    console.warn(
-      "Firebase Messaging is not supported:",
-      error
-    );
-
-    return false;
-  }
-}
-
-
-// =========================================================
-// INITIALIZE MESSAGING
-// =========================================================
-
-async function initializeMessaging() {
-
-  const supported =
-    await isMessagingSupported();
-
-
-  if (!supported) {
-
-    console.warn(
-      "FCM is not supported on this browser."
-    );
-
-    return null;
-  }
-
-
-  if (!FCM_VAPID_KEY ||
-      FCM_VAPID_KEY ===
-        "YOUR_FIREBASE_PUBLIC_VAPID_KEY") {
-
-    console.warn(
-      "FCM VAPID key has not been configured yet."
-    );
-
-    return null;
-  }
-
-
-  if (!messagingInstance) {
-
-    messagingInstance =
-      getMessaging(app);
-
-  }
-
-
-  return messagingInstance;
 }
 
 
@@ -132,6 +66,7 @@ async function requestNotificationPermission() {
   ) {
 
     return "unsupported";
+
   }
 
 
@@ -141,6 +76,7 @@ async function requestNotificationPermission() {
   ) {
 
     return "granted";
+
   }
 
 
@@ -150,14 +86,12 @@ async function requestNotificationPermission() {
   ) {
 
     return "denied";
+
   }
 
 
-  const permission =
-    await Notification.requestPermission();
+  return await Notification.requestPermission();
 
-
-  return permission;
 }
 
 
@@ -169,12 +103,28 @@ async function getDeviceToken(
   serviceWorkerRegistration
 ) {
 
-  const messaging =
-    await initializeMessaging();
-
-
   if (!messaging) {
+
+    console.warn(
+      "Firebase Messaging is not available."
+    );
+
     return null;
+
+  }
+
+
+  if (
+    FCM_VAPID_KEY ===
+    "YOUR_FIREBASE_PUBLIC_VAPID_KEY"
+  ) {
+
+    console.warn(
+      "FCM VAPID key is not configured yet."
+    );
+
+    return null;
+
   }
 
 
@@ -194,14 +144,12 @@ async function getDeviceToken(
 
 
   if (
-    permission !== "granted"
+    permission !==
+    "granted"
   ) {
 
-    console.warn(
-      "Notification permission was not granted."
-    );
-
     return null;
+
   }
 
 
@@ -224,20 +172,18 @@ async function getDeviceToken(
     );
 
     return null;
+
   }
 
 
   return token;
+
 }
 
 
 // =========================================================
 // SAVE DEVICE TOKEN
 // =========================================================
-//
-// Each authenticated user can have multiple devices.
-// Therefore tokens are stored as an array.
-//
 
 async function saveDeviceToken(
   uid,
@@ -245,16 +191,20 @@ async function saveDeviceToken(
 ) {
 
   if (!uid) {
+
     throw new Error(
       "User UID is required."
     );
+
   }
 
 
   if (!token) {
+
     throw new Error(
       "FCM token is required."
     );
+
   }
 
 
@@ -284,6 +234,7 @@ async function saveDeviceToken(
 
 
   return true;
+
 }
 
 
@@ -302,10 +253,11 @@ async function registerCurrentDevice(
   if (!currentUser) {
 
     console.warn(
-      "Cannot register FCM device without login."
+      "Cannot register notification device without login."
     );
 
     return null;
+
   }
 
 
@@ -316,7 +268,9 @@ async function registerCurrentDevice(
 
 
   if (!token) {
+
     return null;
+
   }
 
 
@@ -327,6 +281,7 @@ async function registerCurrentDevice(
 
 
   return token;
+
 }
 
 
@@ -334,7 +289,7 @@ async function registerCurrentDevice(
 // FOREGROUND MESSAGE LISTENER
 // =========================================================
 
-async function listenForForegroundMessages(
+function listenForForegroundMessages(
   callback
 ) {
 
@@ -350,12 +305,14 @@ async function listenForForegroundMessages(
   }
 
 
-  const messaging =
-    await initializeMessaging();
-
-
   if (!messaging) {
+
+    console.warn(
+      "Firebase Messaging is not available."
+    );
+
     return null;
+
   }
 
 
@@ -369,6 +326,7 @@ async function listenForForegroundMessages(
 
     }
   );
+
 }
 
 
@@ -384,10 +342,12 @@ function getNotificationPermission() {
   ) {
 
     return "unsupported";
+
   }
 
 
   return Notification.permission;
+
 }
 
 
@@ -401,9 +361,7 @@ export {
 
   DEVICE_TOKENS_COLLECTION,
 
-  isMessagingSupported,
-
-  initializeMessaging,
+  isMessagingAvailable,
 
   requestNotificationPermission,
 

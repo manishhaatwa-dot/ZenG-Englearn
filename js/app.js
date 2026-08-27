@@ -71,7 +71,7 @@ import {
 import {
   db,
   auth
-} from "../firebase-services.js";
+} from "./js/firebase-services.js";
 
 
 // =========================================================

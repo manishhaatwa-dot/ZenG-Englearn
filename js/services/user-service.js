@@ -22,46 +22,76 @@ import {
 
 
 // =========================================================
-// COLLECTION
-// =========================================================
-//
-// All user documents for this app live inside this
-// dedicated collection.
+// USER COLLECTION
 // =========================================================
 
-const USERS_COLLECTION = "zeng_englearn_users";
+const USERS_COLLECTION =
+  "zeng_englearn_users";
 
 
 // =========================================================
 // CREATE USER DOCUMENT
 // =========================================================
 
-async function createUserDocument(uid, userData = {}) {
+async function createUserDocument(
+  uid,
+  userData = {}
+) {
 
   if (!uid) {
-    throw new Error("User UID is required.");
+
+    throw new Error(
+      "User UID is required."
+    );
+
   }
 
-  const userRef = doc(
-    db,
-    USERS_COLLECTION,
-    uid
-  );
+
+  const displayName =
+    String(
+      userData.displayName || ""
+    )
+      .trim()
+      .replace(
+        /\s+/g,
+        " "
+      );
+
+
+  if (!displayName) {
+
+    throw new Error(
+      "Display name is required."
+    );
+
+  }
+
+
+  const userRef =
+    doc(
+      db,
+      USERS_COLLECTION,
+      uid
+    );
+
 
   const userDocument = {
 
+    // -----------------------------------------------------
+    // Firebase UID
+    // -----------------------------------------------------
+
     uid,
 
-    loginId:
-      userData.loginId || "",
 
-    displayName:
-      userData.displayName || "",
+    // -----------------------------------------------------
+    // Public profile
+    // -----------------------------------------------------
+
+    displayName,
 
     displayNameLower:
-      userData.displayName
-        ? userData.displayName.trim().toLowerCase()
-        : "",
+      displayName.toLowerCase(),
 
     email:
       userData.email || "",
@@ -69,8 +99,18 @@ async function createUserDocument(uid, userData = {}) {
     photoURL:
       userData.photoURL || "",
 
+
+    // -----------------------------------------------------
+    // Name change system
+    // -----------------------------------------------------
+
     nameChangeCount:
-      Number(userData.nameChangeCount || 0),
+      0,
+
+
+    // -----------------------------------------------------
+    // Presence
+    // -----------------------------------------------------
 
     isOnline:
       false,
@@ -78,20 +118,41 @@ async function createUserDocument(uid, userData = {}) {
     lastSeen:
       serverTimestamp(),
 
+
+    // -----------------------------------------------------
+    // Account dates
+    // -----------------------------------------------------
+
     createdAt:
       serverTimestamp(),
 
     updatedAt:
       serverTimestamp(),
 
+
+    // -----------------------------------------------------
+    // Block system
+    // -----------------------------------------------------
+
     blockedUsers:
       [],
+
+
+    // -----------------------------------------------------
+    // English learning progress
+    // -----------------------------------------------------
 
     learningProgress:
       {},
 
+
+    // -----------------------------------------------------
+    // Account status
+    // -----------------------------------------------------
+
     accountStatus:
       "active"
+
   };
 
 
@@ -102,130 +163,129 @@ async function createUserDocument(uid, userData = {}) {
 
 
   return userDocument;
+
 }
 
 
 // =========================================================
-// GET USER
+// GET USER DOCUMENT
 // =========================================================
 
-async function getUserDocument(uid) {
+async function getUserDocument(
+  uid
+) {
 
   if (!uid) {
-    throw new Error("User UID is required.");
+
+    throw new Error(
+      "User UID is required."
+    );
+
   }
 
-  const userRef = doc(
-    db,
-    USERS_COLLECTION,
-    uid
-  );
+
+  const userRef =
+    doc(
+      db,
+      USERS_COLLECTION,
+      uid
+    );
+
 
   const snapshot =
-    await getDoc(userRef);
+    await getDoc(
+      userRef
+    );
 
 
-  if (!snapshot.exists()) {
+  if (
+    !snapshot.exists()
+  ) {
+
     return null;
+
   }
 
 
   return {
-    id: snapshot.id,
+
+    id:
+      snapshot.id,
+
     ...snapshot.data()
+
   };
+
 }
 
 
 // =========================================================
-// UPDATE USER
+// UPDATE USER DOCUMENT
 // =========================================================
 
-async function updateUserDocument(uid, data) {
+async function updateUserDocument(
+  uid,
+  data
+) {
 
   if (!uid) {
-    throw new Error("User UID is required.");
+
+    throw new Error(
+      "User UID is required."
+    );
+
   }
 
-  if (!data || typeof data !== "object") {
+
+  if (
+    !data ||
+    typeof data !== "object"
+  ) {
+
     throw new Error(
       "User update data is required."
     );
+
   }
 
 
-  const userRef = doc(
-    db,
-    USERS_COLLECTION,
-    uid
-  );
+  const userRef =
+    doc(
+      db,
+      USERS_COLLECTION,
+      uid
+    );
 
 
   await updateDoc(
     userRef,
     {
+
       ...data,
-      updatedAt: serverTimestamp()
+
+      updatedAt:
+        serverTimestamp()
+
     }
   );
+
+
+  return true;
+
 }
 
 
 // =========================================================
-// CHECK LOGIN ID
+// CHECK DISPLAY NAME AVAILABILITY
 // =========================================================
 //
-// Login ID is permanent and must be unique.
-// This function is used before account creation.
+// Names are compared case-insensitively.
 //
-
-async function isLoginIdAvailable(loginId) {
-
-  const normalizedLoginId =
-    String(loginId || "")
-      .trim()
-      .toLowerCase();
-
-
-  if (!normalizedLoginId) {
-    return false;
-  }
-
-
-  const usersRef =
-    collection(
-      db,
-      USERS_COLLECTION
-    );
-
-
-  const loginIdQuery =
-    query(
-      usersRef,
-      where(
-        "loginId",
-        "==",
-        normalizedLoginId
-      )
-    );
-
-
-  const snapshot =
-    await getDocs(
-      loginIdQuery
-    );
-
-
-  return snapshot.empty;
-}
-
-
-// =========================================================
-// CHECK DISPLAY NAME
-// =========================================================
+// Rahul
+// rahul
+// RAHUL
 //
-// Display names are globally unique.
-// "Rahul" and "rahul" are treated as the same name.
+// All are treated as the same display name.
 //
 
 async function isDisplayNameAvailable(
@@ -234,13 +294,21 @@ async function isDisplayNameAvailable(
 ) {
 
   const normalizedName =
-    String(displayName || "")
+    String(
+      displayName || ""
+    )
       .trim()
+      .replace(
+        /\s+/g,
+        " "
+      )
       .toLowerCase();
 
 
   if (!normalizedName) {
+
     return false;
+
   }
 
 
@@ -254,6 +322,7 @@ async function isDisplayNameAvailable(
   const nameQuery =
     query(
       usersRef,
+
       where(
         "displayNameLower",
         "==",
@@ -268,24 +337,39 @@ async function isDisplayNameAvailable(
     );
 
 
-  if (snapshot.empty) {
+  if (
+    snapshot.empty
+  ) {
+
     return true;
+
   }
 
 
-  if (!excludeUid) {
-    return false;
+  // -------------------------------------------------------
+  // During a name change, allow the user to keep their
+  // existing name.
+  // -------------------------------------------------------
+
+  if (
+    excludeUid
+  ) {
+
+    const conflictingUser =
+      snapshot.docs.find(
+        (userDoc) =>
+          userDoc.id !==
+          excludeUid
+      );
+
+
+    return !conflictingUser;
+
   }
 
 
-  const conflictingUser =
-    snapshot.docs.find(
-      (item) =>
-        item.id !== excludeUid
-    );
+  return false;
 
-
-  return !conflictingUser;
 }
 
 
@@ -299,7 +383,11 @@ async function updateOnlineStatus(
 ) {
 
   if (!uid) {
-    throw new Error("User UID is required.");
+
+    throw new Error(
+      "User UID is required."
+    );
+
   }
 
 
@@ -314,15 +402,22 @@ async function updateOnlineStatus(
   await updateDoc(
     userRef,
     {
-      isOnline: Boolean(isOnline),
+
+      isOnline:
+        Boolean(isOnline),
 
       lastSeen:
         serverTimestamp(),
 
       updatedAt:
         serverTimestamp()
+
     }
   );
+
+
+  return true;
+
 }
 
 
@@ -330,15 +425,26 @@ async function updateOnlineStatus(
 // DELETE USER DOCUMENT
 // =========================================================
 //
-// Actual complete account deletion will later also remove
-// chats, profile photo/storage data, blocks and learning
-// data before/alongside Firebase Auth deletion.
+// Complete account deletion will later also remove:
+// - chats
+// - profile photo
+// - notification tokens
+// - learning data
+// - block data
+//
+// This function currently removes the main user document.
 //
 
-async function deleteUserDocument(uid) {
+async function deleteUserDocument(
+  uid
+) {
 
   if (!uid) {
-    throw new Error("User UID is required.");
+
+    throw new Error(
+      "User UID is required."
+    );
+
   }
 
 
@@ -353,6 +459,10 @@ async function deleteUserDocument(uid) {
   await deleteDoc(
     userRef
   );
+
+
+  return true;
+
 }
 
 
@@ -361,16 +471,19 @@ async function deleteUserDocument(uid) {
 // =========================================================
 
 export {
+
   USERS_COLLECTION,
 
   createUserDocument,
+
   getUserDocument,
+
   updateUserDocument,
 
-  isLoginIdAvailable,
   isDisplayNameAvailable,
 
   updateOnlineStatus,
 
   deleteUserDocument
+
 };

@@ -797,7 +797,7 @@ background:#fff0f5;
 
 .zeng-message.mine {
 
-  background:var(--primary);
+background:#79cfc5;
 
   color:white;
 
@@ -978,7 +978,7 @@ background:#fff0f5;
 
       border-radius:14px;
 
-      background:var(--primary);
+    background:#79cfc5;
 
       color:white;
 

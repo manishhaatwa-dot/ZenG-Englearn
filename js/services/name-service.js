@@ -1,331 +1,279 @@
 // =========================================================
 // ZenG English Learn
-// Identity Validation Service
+// Display Name Service
 // =========================================================
 
 import {
-  isLoginIdAvailable,
+  getUserDocument,
+  updateUserDocument,
   isDisplayNameAvailable
 } from "./user-service.js";
 
-
-// =========================================================
-// SETTINGS
-// =========================================================
-
-const MAX_NAME_CHANGES = 3;
-
-const MIN_LOGIN_ID_LENGTH = 4;
-const MAX_LOGIN_ID_LENGTH = 24;
-
-const MIN_DISPLAY_NAME_LENGTH = 2;
-const MAX_DISPLAY_NAME_LENGTH = 30;
+import {
+  validateDisplayName,
+  MAX_NAME_CHANGES,
+  normalizeDisplayName
+} from "./identity-service.js";
 
 
 // =========================================================
-// LOGIN ID FORMAT
-// =========================================================
-//
-// Login ID is permanent.
-// It can contain:
-// - English letters
-// - numbers
-// - underscore
-// - hyphen
-//
-// Spaces and special characters are not allowed.
-//
-
-const LOGIN_ID_PATTERN =
-  /^[A-Za-z0-9_-]+$/;
-
-
-// =========================================================
-// DISPLAY NAME FORMAT
-// =========================================================
-//
-// Display name can contain normal letters, numbers and
-// spaces. We keep it simple and readable.
-//
-
-const DISPLAY_NAME_PATTERN =
-  /^[A-Za-z0-9 ]+$/;
-
-
-// =========================================================
-// NORMALIZE LOGIN ID
+// GET NAME CHANGE STATUS
 // =========================================================
 
-function normalizeLoginId(loginId) {
-
-  return String(loginId || "")
-    .trim()
-    .toLowerCase();
-
-}
-
-
-// =========================================================
-// NORMALIZE DISPLAY NAME
-// =========================================================
-
-function normalizeDisplayName(displayName) {
-
-  return String(displayName || "")
-    .trim();
-
-}
-
-
-// =========================================================
-// VALIDATE LOGIN ID
-// =========================================================
-
-function validateLoginId(loginId) {
-
-  const normalized =
-    normalizeLoginId(loginId);
-
-
-  if (!normalized) {
-    return {
-      valid: false,
-      message: "Login ID is required."
-    };
-  }
-
-
-  if (
-    normalized.length <
-    MIN_LOGIN_ID_LENGTH
-  ) {
-    return {
-      valid: false,
-      message:
-        `Login ID must contain at least ${MIN_LOGIN_ID_LENGTH} characters.`
-    };
-  }
-
-
-  if (
-    normalized.length >
-    MAX_LOGIN_ID_LENGTH
-  ) {
-    return {
-      valid: false,
-      message:
-        `Login ID cannot contain more than ${MAX_LOGIN_ID_LENGTH} characters.`
-    };
-  }
-
-
-  if (
-    !LOGIN_ID_PATTERN.test(
-      normalized
-    )
-  ) {
-    return {
-      valid: false,
-      message:
-        "Login ID can use only letters, numbers, underscore and hyphen."
-    };
-  }
-
-
-  return {
-    valid: true,
-    value: normalized
-  };
-}
-
-
-// =========================================================
-// VALIDATE DISPLAY NAME
-// =========================================================
-
-function validateDisplayName(
-  displayName
+async function getNameChangeStatus(
+  uid
 ) {
 
-  const normalized =
-    normalizeDisplayName(
-      displayName
+  if (!uid) {
+
+    throw new Error(
+      "User UID is required."
+    );
+
+  }
+
+
+  const user =
+    await getUserDocument(
+      uid
     );
 
 
-  if (!normalized) {
-    return {
-      valid: false,
-      message: "Name is required."
-    };
+  if (!user) {
+
+    throw new Error(
+      "User profile not found."
+    );
+
   }
 
 
-  if (
-    normalized.length <
-    MIN_DISPLAY_NAME_LENGTH
-  ) {
-    return {
-      valid: false,
-      message:
-        `Name must contain at least ${MIN_DISPLAY_NAME_LENGTH} characters.`
-    };
-  }
-
-
-  if (
-    normalized.length >
-    MAX_DISPLAY_NAME_LENGTH
-  ) {
-    return {
-      valid: false,
-      message:
-        `Name cannot contain more than ${MAX_DISPLAY_NAME_LENGTH} characters.`
-    };
-  }
-
-
-  if (
-    !DISPLAY_NAME_PATTERN.test(
-      normalized
-    )
-  ) {
-    return {
-      valid: false,
-      message:
-        "Name can contain only letters, numbers and spaces."
-    };
-  }
+  const count =
+    Number(
+      user.nameChangeCount || 0
+    );
 
 
   return {
-    valid: true,
-    value: normalized
+
+    currentName:
+      user.displayName || "",
+
+    nameChangeCount:
+      count,
+
+    maxNameChanges:
+      MAX_NAME_CHANGES,
+
+    remainingChanges:
+      Math.max(
+        0,
+        MAX_NAME_CHANGES - count
+      ),
+
+    canChange:
+      count < MAX_NAME_CHANGES
+
   };
+
 }
 
 
 // =========================================================
-// CHECK LOGIN ID
+// CHANGE DISPLAY NAME
 // =========================================================
 
-async function validateUniqueLoginId(
-  loginId
+async function changeDisplayName(
+  uid,
+  newDisplayName
 ) {
+
+  if (!uid) {
+
+    throw new Error(
+      "User UID is required."
+    );
+
+  }
+
+
+  // -------------------------------------------------------
+  // Validate new name
+  // -------------------------------------------------------
 
   const validation =
-    validateLoginId(
-      loginId
+    validateDisplayName(
+      newDisplayName
     );
 
 
-  if (!validation.valid) {
-    return validation;
+  if (
+    !validation.valid
+  ) {
+
+    throw new Error(
+      validation.message
+    );
+
   }
 
 
-  const available =
-    await isLoginIdAvailable(
+  const normalizedName =
+    normalizeDisplayName(
       validation.value
     );
 
 
-  if (!available) {
-    return {
-      valid: false,
-      message:
-        "This Login ID is already taken."
-    };
-  }
+  // -------------------------------------------------------
+  // Get current user
+  // -------------------------------------------------------
 
-
-  return {
-    valid: true,
-    value: validation.value
-  };
-}
-
-
-// =========================================================
-// CHECK DISPLAY NAME
-// =========================================================
-
-async function validateUniqueDisplayName(
-  displayName,
-  excludeUid = null
-) {
-
-  const validation =
-    validateDisplayName(
-      displayName
+  const user =
+    await getUserDocument(
+      uid
     );
 
 
-  if (!validation.valid) {
-    return validation;
+  if (!user) {
+
+    throw new Error(
+      "User profile not found."
+    );
+
   }
 
+
+  const currentCount =
+    Number(
+      user.nameChangeCount || 0
+    );
+
+
+  // -------------------------------------------------------
+  // Check limit
+  // -------------------------------------------------------
+
+  if (
+    currentCount >=
+    MAX_NAME_CHANGES
+  ) {
+
+    throw new Error(
+      "You have reached the maximum number of display name changes."
+    );
+
+  }
+
+
+  // -------------------------------------------------------
+  // Check whether the name is actually different
+  // -------------------------------------------------------
+
+  const currentName =
+    normalizeDisplayName(
+      user.displayName || ""
+    );
+
+
+  if (
+    currentName.toLowerCase() ===
+    normalizedName.toLowerCase()
+  ) {
+
+    return {
+
+      success:
+        true,
+
+      changed:
+        false,
+
+      displayName:
+        currentName,
+
+      nameChangeCount:
+        currentCount,
+
+      remainingChanges:
+        MAX_NAME_CHANGES -
+        currentCount
+
+    };
+
+  }
+
+
+  // -------------------------------------------------------
+  // Check uniqueness
+  // -------------------------------------------------------
 
   const available =
     await isDisplayNameAvailable(
-      validation.value,
-      excludeUid
+      normalizedName,
+      uid
     );
 
 
   if (!available) {
-    return {
-      valid: false,
-      message:
-        "This name is already being used by another user."
-    };
+
+    throw new Error(
+      "This display name is already being used by another user."
+    );
+
   }
 
 
-  return {
-    valid: true,
-    value: validation.value
-  };
-}
+  // -------------------------------------------------------
+  // Update profile
+  // -------------------------------------------------------
+
+  const newCount =
+    currentCount + 1;
 
 
-// =========================================================
-// NAME CHANGE LIMIT
-// =========================================================
+  await updateUserDocument(
+    uid,
+    {
 
-function canChangeDisplayName(
-  nameChangeCount
-) {
+      displayName:
+        normalizedName,
 
-  const count =
-    Number(
-      nameChangeCount || 0
-    );
+      displayNameLower:
+        normalizedName.toLowerCase(),
 
+      nameChangeCount:
+        newCount
 
-  return count <
-    MAX_NAME_CHANGES;
-}
-
-
-// =========================================================
-// REMAINING NAME CHANGES
-// =========================================================
-
-function getRemainingNameChanges(
-  nameChangeCount
-) {
-
-  const count =
-    Number(
-      nameChangeCount || 0
-    );
-
-
-  return Math.max(
-    0,
-    MAX_NAME_CHANGES - count
+    }
   );
+
+
+  // -------------------------------------------------------
+  // Return result
+  // -------------------------------------------------------
+
+  return {
+
+    success:
+      true,
+
+    changed:
+      true,
+
+    displayName:
+      normalizedName,
+
+    nameChangeCount:
+      newCount,
+
+    remainingChanges:
+      Math.max(
+        0,
+        MAX_NAME_CHANGES - newCount
+      )
+
+  };
+
 }
 
 
@@ -334,23 +282,9 @@ function getRemainingNameChanges(
 // =========================================================
 
 export {
-  MAX_NAME_CHANGES,
 
-  MIN_LOGIN_ID_LENGTH,
-  MAX_LOGIN_ID_LENGTH,
+  getNameChangeStatus,
 
-  MIN_DISPLAY_NAME_LENGTH,
-  MAX_DISPLAY_NAME_LENGTH,
+  changeDisplayName
 
-  normalizeLoginId,
-  normalizeDisplayName,
-
-  validateLoginId,
-  validateDisplayName,
-
-  validateUniqueLoginId,
-  validateUniqueDisplayName,
-
-  canChangeDisplayName,
-  getRemainingNameChanges
 };

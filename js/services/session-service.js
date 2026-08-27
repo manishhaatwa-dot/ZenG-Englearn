@@ -1,6 +1,6 @@
 // =========================================================
 // ZenG English Learn
-// Persistent Session Service
+// Session Service
 // =========================================================
 
 import {
@@ -20,73 +20,9 @@ import {
 // SESSION STATE
 // =========================================================
 
-const SessionState = {
-  initialized: false,
-  loading: true,
-  user: null,
-  profile: null
-};
+let initialized = false;
 
-
-// =========================================================
-// GET SESSION STATE
-// =========================================================
-
-function getSessionState() {
-  return {
-    ...SessionState
-  };
-}
-
-
-// =========================================================
-// GET CURRENT AUTH USER
-// =========================================================
-
-function getSessionUser() {
-  return auth.currentUser;
-}
-
-
-// =========================================================
-// LOAD FIRESTORE PROFILE
-// =========================================================
-
-async function loadUserProfile(user) {
-
-  if (!user) {
-    SessionState.profile = null;
-    return null;
-  }
-
-
-  try {
-
-    const profile =
-      await getUserDocument(
-        user.uid
-      );
-
-
-    SessionState.profile =
-      profile;
-
-
-    return profile;
-
-  } catch (error) {
-
-    console.error(
-      "Unable to load user profile:",
-      error
-    );
-
-    SessionState.profile =
-      null;
-
-    return null;
-  }
-}
+let unsubscribeAuth = null;
 
 
 // =========================================================
@@ -98,170 +34,259 @@ function startSessionListener(
 ) {
 
   if (
-    typeof callback !==
-    "function"
+    typeof callback !== "function"
   ) {
 
     throw new Error(
-      "Session callback must be a function."
+      "Session callback is required."
     );
 
   }
 
 
-  return onAuthStateChanged(
-    auth,
-    async (user) => {
+  // -------------------------------------------------------
+  // Prevent duplicate Firebase listeners.
+  // -------------------------------------------------------
 
-      SessionState.loading =
-        true;
+  if (
+    unsubscribeAuth
+  ) {
 
+    unsubscribeAuth();
 
-      SessionState.user =
-        user || null;
+    unsubscribeAuth = null;
 
-
-      if (user) {
-
-        await loadUserProfile(
-          user
-        );
-
-      } else {
-
-        SessionState.profile =
-          null;
-
-      }
-
-
-      SessionState.loading =
-        false;
-
-      SessionState.initialized =
-        true;
-
-
-      callback(
-        getSessionState()
-      );
-
-    }
-  );
-}
-
-
-// =========================================================
-// WAIT FOR INITIAL SESSION CHECK
-// =========================================================
-//
-// Useful when app startup must wait until Firebase tells
-// us whether a user is already logged in.
-//
-
-function waitForInitialSession() {
-
-  return new Promise(
-    (resolve) => {
-
-      if (
-        SessionState.initialized
-      ) {
-
-        resolve(
-          getSessionState()
-        );
-
-        return;
-      }
-
-
-      const unsubscribe =
-        onAuthStateChanged(
-          auth,
-          async (user) => {
-
-            SessionState.user =
-              user || null;
-
-
-            if (user) {
-
-              await loadUserProfile(
-                user
-              );
-
-            } else {
-
-              SessionState.profile =
-                null;
-
-            }
-
-
-            SessionState.loading =
-              false;
-
-            SessionState.initialized =
-              true;
-
-
-            unsubscribe();
-
-
-            resolve(
-              getSessionState()
-            );
-
-          }
-        );
-
-    }
-  );
-}
-
-
-// =========================================================
-// REFRESH PROFILE
-// =========================================================
-
-async function refreshSessionProfile() {
-
-  const user =
-    auth.currentUser;
-
-
-  if (!user) {
-
-    SessionState.user =
-      null;
-
-    SessionState.profile =
-      null;
-
-    return null;
   }
 
 
-  SessionState.user =
-    user;
+  // -------------------------------------------------------
+  // Firebase Auth state listener
+  // -------------------------------------------------------
+
+  unsubscribeAuth =
+    onAuthStateChanged(
+      auth,
+      async (firebaseUser) => {
+
+        // -------------------------------------------------
+        // First Firebase auth check is still initializing.
+        // -------------------------------------------------
+
+        if (!initialized) {
+
+          initialized = true;
+
+        }
 
 
-  return await loadUserProfile(
-    user
-  );
+        // -------------------------------------------------
+        // No authenticated user
+        // -------------------------------------------------
+
+        if (!firebaseUser) {
+
+          callback({
+
+            initialized:
+              true,
+
+            loading:
+              false,
+
+            user:
+              null,
+
+            profile:
+              null
+
+          });
+
+          return;
+
+        }
+
+
+        // -------------------------------------------------
+        // Authenticated user
+        // -------------------------------------------------
+
+        try {
+
+          const profile =
+            await getUserDocument(
+              firebaseUser.uid
+            );
+
+
+          // -----------------------------------------------
+          // Auth account exists but profile does not.
+          // -----------------------------------------------
+
+          if (!profile) {
+
+            console.warn(
+              "Firebase user exists but Firestore profile was not found."
+            );
+
+
+            callback({
+
+              initialized:
+                true,
+
+              loading:
+                false,
+
+              user:
+                firebaseUser,
+
+              profile:
+                null
+
+            });
+
+            return;
+
+          }
+
+
+          // -----------------------------------------------
+          // Account status check
+          // -----------------------------------------------
+
+          if (
+            profile.accountStatus ===
+            "deactivated"
+          ) {
+
+            callback({
+
+              initialized:
+                true,
+
+              loading:
+                false,
+
+              user:
+                null,
+
+              profile:
+                null,
+
+              deactivated:
+                true
+
+            });
+
+            return;
+
+          }
+
+
+          // -----------------------------------------------
+          // Normal authenticated session
+          // -----------------------------------------------
+
+          callback({
+
+            initialized:
+              true,
+
+            loading:
+              false,
+
+            user:
+              firebaseUser,
+
+            profile
+
+          });
+
+        } catch (error) {
+
+          console.error(
+            "Unable to load user profile:",
+            error
+          );
+
+
+          callback({
+
+            initialized:
+              true,
+
+            loading:
+              false,
+
+            user:
+              firebaseUser,
+
+            profile:
+              null,
+
+            profileError:
+              true,
+
+            error
+
+          });
+
+        }
+
+      }
+    );
+
+
+  // -------------------------------------------------------
+  // Return unsubscribe function.
+  // -------------------------------------------------------
+
+  return unsubscribeAuth;
+
 }
 
 
 // =========================================================
-// SESSION LOGIN CHECK
+// GET CURRENT FIREBASE USER
 // =========================================================
 
-function isLoggedIn() {
+function getCurrentUser() {
+
+  return auth.currentUser;
+
+}
+
+
+// =========================================================
+// CHECK AUTHENTICATION
+// =========================================================
+
+function isUserLoggedIn() {
 
   return Boolean(
     auth.currentUser
   );
+
+}
+
+
+// =========================================================
+// STOP SESSION LISTENER
+// =========================================================
+
+function stopSessionListener() {
+
+  if (
+    unsubscribeAuth
+  ) {
+
+    unsubscribeAuth();
+
+    unsubscribeAuth =
+      null;
+
+  }
+
 }
 
 
@@ -270,15 +295,13 @@ function isLoggedIn() {
 // =========================================================
 
 export {
-  SessionState,
-
-  getSessionState,
-  getSessionUser,
 
   startSessionListener,
-  waitForInitialSession,
 
-  refreshSessionProfile,
+  getCurrentUser,
 
-  isLoggedIn
+  isUserLoggedIn,
+
+  stopSessionListener
+
 };

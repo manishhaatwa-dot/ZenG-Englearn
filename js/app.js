@@ -22,7 +22,7 @@ import {
 
 
 // =========================================================
-// LEARNING PAGES
+// PAGE MODULES
 // =========================================================
 
 import {
@@ -178,6 +178,71 @@ function escapeHTML(
 
 
 // =========================================================
+// PAGE LOADING
+// =========================================================
+
+function showPageLoading() {
+
+  if (!appRoot) {
+    return;
+  }
+
+
+  appRoot.innerHTML = `
+
+    <div class="page">
+
+      <div
+        class="page-container"
+        style="
+          min-height:100dvh;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          padding:20px;
+        "
+      >
+
+        <div
+          class="card"
+          style="
+            width:min(100%,430px);
+            text-align:center;
+            padding:28px;
+          "
+        >
+
+          <div
+            style="
+              font-size:34px;
+            "
+          >
+            🌿
+          </div>
+
+
+          <div
+            style="
+              margin-top:10px;
+              font-size:15px;
+              font-weight:800;
+            "
+          >
+            Loading...
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+// =========================================================
 // PAGE ERROR
 // =========================================================
 
@@ -198,8 +263,7 @@ function renderPageError(
       .toUpperCase() +
     String(
       page || "page"
-    )
-      .slice(1);
+    ).slice(1);
 
 
   appRoot.innerHTML = `
@@ -278,7 +342,7 @@ function renderPageError(
               font-size:11px;
             "
           >
-            Powered by Opnora.com
+            Powered by opnora.com
           </div>
 
         </div>
@@ -312,20 +376,14 @@ function renderPageError(
 // OPEN PAGE
 // =========================================================
 //
-// All dashboard sections are connected here.
-//
-// IMPORTANT:
-// Page-specific UI and Firebase logic stay inside their
-// own page files. app.js only controls navigation.
-//
-// Current pages:
+// All existing page files are connected here.
 //
 // grammar-page.js
 // vocabulary-page.js
 // stories-page.js
 // chat-page.js
 //
-// This keeps the main application controller stable.
+// No dynamic import is used.
 // =========================================================
 
 async function openPage(
@@ -337,10 +395,6 @@ async function openPage(
   }
 
 
-  // -------------------------------------------------------
-  // Allowed pages
-  // -------------------------------------------------------
-
   const allowedPages = [
 
     "grammar",
@@ -349,9 +403,7 @@ async function openPage(
 
     "stories",
 
-    "chat",
-
-    "profile"
+    "chat"
 
   ];
 
@@ -372,18 +424,9 @@ async function openPage(
   }
 
 
-  // -------------------------------------------------------
-  // Authentication check
-  // -------------------------------------------------------
-
   if (
-    !AppState.user ||
-    !AppState.profile
+    !AppState.user
   ) {
-
-    console.warn(
-      "ZenG navigation blocked: user/profile unavailable."
-    );
 
     return;
 
@@ -394,63 +437,10 @@ async function openPage(
     page;
 
 
+  showPageLoading();
+
+
   try {
-
-    // -----------------------------------------------------
-    // Lightweight loading screen
-    // -----------------------------------------------------
-
-    appRoot.innerHTML = `
-
-      <div class="page">
-
-        <div
-          class="page-container"
-          style="
-            min-height:100dvh;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-          "
-        >
-
-          <div
-            class="card"
-            style="
-              width:min(100%,430px);
-              text-align:center;
-              padding:28px;
-            "
-          >
-
-            <div
-              style="
-                font-size:34px;
-              "
-            >
-              🌿
-            </div>
-
-
-            <div
-              style="
-                margin-top:10px;
-                font-size:15px;
-                font-weight:800;
-              "
-            >
-              Loading...
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    `;
-
 
     // =====================================================
     // GRAMMAR
@@ -460,31 +450,20 @@ async function openPage(
       page === "grammar"
     ) {
 
-      if (
-        typeof renderGrammarPage !==
-        "function"
-      ) {
-
-        throw new Error(
-          "renderGrammarPage() is not available."
-        );
-
-      }
-
-
       await renderGrammarPage(
         appRoot,
         {
-
-          displayName:
-            AppState.profile?.displayName ||
-            "Learner",
 
           user:
             AppState.user,
 
           profile:
-            AppState.profile
+            AppState.profile,
+
+          displayName:
+            AppState.profile?.displayName ||
+            AppState.user?.displayName ||
+            "Learner"
 
         }
       );
@@ -503,31 +482,20 @@ async function openPage(
       page === "vocabulary"
     ) {
 
-      if (
-        typeof renderVocabularyPage !==
-        "function"
-      ) {
-
-        throw new Error(
-          "renderVocabularyPage() is not available."
-        );
-
-      }
-
-
       await renderVocabularyPage(
         appRoot,
         {
-
-          displayName:
-            AppState.profile?.displayName ||
-            "Learner",
 
           user:
             AppState.user,
 
           profile:
-            AppState.profile
+            AppState.profile,
+
+          displayName:
+            AppState.profile?.displayName ||
+            AppState.user?.displayName ||
+            "Learner"
 
         }
       );
@@ -546,31 +514,20 @@ async function openPage(
       page === "stories"
     ) {
 
-      if (
-        typeof renderStoriesPage !==
-        "function"
-      ) {
-
-        throw new Error(
-          "renderStoriesPage() is not available."
-        );
-
-      }
-
-
       await renderStoriesPage(
         appRoot,
         {
-
-          displayName:
-            AppState.profile?.displayName ||
-            "Learner",
 
           user:
             AppState.user,
 
           profile:
-            AppState.profile
+            AppState.profile,
+
+          displayName:
+            AppState.profile?.displayName ||
+            AppState.user?.displayName ||
+            "Learner"
 
         }
       );
@@ -589,18 +546,6 @@ async function openPage(
       page === "chat"
     ) {
 
-      if (
-        typeof renderChatPage !==
-        "function"
-      ) {
-
-        throw new Error(
-          "renderChatPage() is not available."
-        );
-
-      }
-
-
       await renderChatPage(
         appRoot,
         {
@@ -613,6 +558,7 @@ async function openPage(
 
           displayName:
             AppState.profile?.displayName ||
+            AppState.user?.displayName ||
             "Learner"
 
         }
@@ -622,88 +568,6 @@ async function openPage(
       return;
 
     }
-
-
-    // =====================================================
-    // PROFILE
-    // =====================================================
-    //
-    // Profile page is loaded dynamically so app.js does not
-    // break if its implementation is changed independently.
-    // =====================================================
-
-    if (
-      page === "profile"
-    ) {
-
-      const profileModule =
-        await import(
-          "./pages/profile-page.js"
-        );
-
-
-      if (
-        typeof profileModule.renderProfilePage ===
-        "function"
-      ) {
-
-        await profileModule.renderProfilePage(
-          appRoot,
-          {
-
-            user:
-              AppState.user,
-
-            profile:
-              AppState.profile,
-
-            displayName:
-              AppState.profile?.displayName ||
-              "Learner"
-
-          }
-        );
-
-
-        return;
-
-      }
-
-
-      if (
-        typeof profileModule.renderPage ===
-        "function"
-      ) {
-
-        await profileModule.renderPage(
-          appRoot,
-          {
-
-            user:
-              AppState.user,
-
-            profile:
-              AppState.profile
-
-          }
-        );
-
-
-        return;
-
-      }
-
-
-      throw new Error(
-        "profile-page.js does not export renderProfilePage() or renderPage()."
-      );
-
-    }
-
-
-    throw new Error(
-      `No renderer found for "${page}".`
-    );
 
 
   } catch (error) {
@@ -726,60 +590,47 @@ async function openPage(
 // =========================================================
 // NAVIGATION
 // =========================================================
-//
-// Central navigation function.
-//
-// Dashboard:
-//
-// data-dashboard-page="grammar"
-// data-dashboard-page="vocabulary"
-// data-dashboard-page="stories"
-// data-dashboard-page="chat"
-// data-dashboard-page="profile"
-//
-// Pages can return to Dashboard by dispatching:
-//
-// zeng:navigate
-//
-// =========================================================
 
 async function navigateTo(
   page
 ) {
 
+  // -------------------------------------------------------
+  // Dashboard
+  // -------------------------------------------------------
+
   if (
     page === "dashboard"
   ) {
-
-    if (
-      !AppState.user ||
-      !AppState.profile
-    ) {
-
-      return;
-
-    }
-
 
     AppState.currentPage =
       "dashboard";
 
 
-    renderDashboard({
+    if (
+      AppState.user
+    ) {
 
-      user:
-        AppState.user,
+      renderDashboard({
 
-      profile:
-        AppState.profile
+        user:
+          AppState.user,
 
-    });
+        profile:
+          AppState.profile || {}
 
+      });
+
+    }
 
     return;
 
   }
 
+
+  // -------------------------------------------------------
+  // Learning pages
+  // -------------------------------------------------------
 
   await openPage(
     page
@@ -878,15 +729,10 @@ function renderDashboard(
             </div>
 
 
-            <button
-              type="button"
-              class="dashboard-profile-button"
-              data-dashboard-page="profile"
-              aria-label="Open profile"
+            <div
               style="
                 width:48px;
                 height:48px;
-                border:none;
                 border-radius:50%;
                 background:var(--surface-soft);
                 display:flex;
@@ -894,11 +740,11 @@ function renderDashboard(
                 justify-content:center;
                 font-size:24px;
                 flex-shrink:0;
-                cursor:pointer;
               "
+              aria-label="Profile"
             >
               👤
-            </button>
+            </div>
 
           </div>
 
@@ -958,6 +804,7 @@ function renderDashboard(
                 color:var(--text-secondary);
               "
             >
+
               Account:
 
               <strong
@@ -1278,7 +1125,7 @@ function renderDashboard(
           <button
             type="button"
             class="card dashboard-card"
-            data-dashboard-page="profile"
+            id="dashboardProfileButton"
             style="
               width:100%;
               margin-top:12px;
@@ -1352,7 +1199,7 @@ function renderDashboard(
               font-size:11px;
             "
           >
-            Powered by Opnora.com
+            Powered by opnora.com
           </div>
 
         </div>
@@ -1405,6 +1252,31 @@ function renderDashboard(
 
     }
   );
+
+
+  // =======================================================
+  // PROFILE
+  // =======================================================
+  //
+  // There is currently no profile-page.js.
+  // Keep the dashboard button harmless until a real
+  // profile module is created.
+  // =======================================================
+
+  document
+    .getElementById(
+      "dashboardProfileButton"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        alert(
+          "Profile section will be available soon."
+        );
+
+      }
+    );
 
 
   // =======================================================
@@ -1475,7 +1347,7 @@ async function handleAuthenticatedUser(
 
 
   AppState.profile =
-    session.profile;
+    session.profile || {};
 
 
   AppState.currentPage =
@@ -1483,7 +1355,7 @@ async function handleAuthenticatedUser(
 
 
   // -------------------------------------------------------
-  // FCM device registration
+  // FCM DEVICE REGISTRATION
   // -------------------------------------------------------
 
   try {
@@ -1516,7 +1388,7 @@ async function handleAuthenticatedUser(
 
 
   // -------------------------------------------------------
-  // Dashboard
+  // DASHBOARD
   // -------------------------------------------------------
 
   renderDashboard(
@@ -1573,7 +1445,7 @@ async function handleSessionChange(
 
 
   // -------------------------------------------------------
-  // Firebase is still checking saved session
+  // Firebase is checking saved session.
   // -------------------------------------------------------
 
   if (
@@ -1588,7 +1460,7 @@ async function handleSessionChange(
 
 
   // -------------------------------------------------------
-  // Logged in
+  // LOGGED IN
   // -------------------------------------------------------
 
   if (
@@ -1602,7 +1474,7 @@ async function handleSessionChange(
   }
 
   // -------------------------------------------------------
-  // Logged out
+  // LOGGED OUT
   // -------------------------------------------------------
 
   else {
@@ -1619,21 +1491,6 @@ async function handleSessionChange(
 
 // =========================================================
 // INTERNAL NAVIGATION EVENTS
-// =========================================================
-//
-// Any page can return to Dashboard:
-//
-// window.dispatchEvent(
-//   new CustomEvent(
-//     "zeng:navigate",
-//     {
-//       detail:{
-//         page:"dashboard"
-//       }
-//     }
-//   )
-// );
-//
 // =========================================================
 
 window.addEventListener(
@@ -1753,7 +1610,7 @@ function startApp() {
                         font-size:11px;
                       "
                     >
-                      Powered by Opnora.com
+                      Powered by opnora.com
                     </div>
 
                   </div>
@@ -1833,7 +1690,6 @@ function startApp() {
                   margin-top:8px;
                   color:var(--text-secondary);
                   font-size:12px;
-                  line-height:1.5;
                 "
               >
                 Please refresh the page and try again.
@@ -1847,7 +1703,7 @@ function startApp() {
                   font-size:11px;
                 "
               >
-                Powered by Opnora.com
+                Powered by opnora.com
               </div>
 
             </div>

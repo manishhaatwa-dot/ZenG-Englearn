@@ -45,7 +45,7 @@ function startSessionListener(
 
 
   // -------------------------------------------------------
-  // Prevent duplicate Firebase listeners.
+  // Prevent duplicate listeners.
   // -------------------------------------------------------
 
   if (
@@ -60,7 +60,7 @@ function startSessionListener(
 
 
   // -------------------------------------------------------
-  // Firebase Auth state listener
+  // Firebase Auth listener
   // -------------------------------------------------------
 
   unsubscribeAuth =
@@ -69,21 +69,12 @@ function startSessionListener(
       async (firebaseUser) => {
 
         // -------------------------------------------------
-        // First Firebase auth check is still initializing.
-        // -------------------------------------------------
-
-        if (!initialized) {
-
-          initialized = true;
-
-        }
-
-
-        // -------------------------------------------------
-        // No authenticated user
+        // Logged out
         // -------------------------------------------------
 
         if (!firebaseUser) {
+
+          initialized = true;
 
           callback({
 
@@ -119,14 +110,19 @@ function startSessionListener(
 
 
           // -----------------------------------------------
-          // Auth account exists but profile does not.
+          // Auth user exists but Firestore profile is
+          // missing.
           // -----------------------------------------------
 
           if (!profile) {
 
             console.warn(
-              "Firebase user exists but Firestore profile was not found."
+              "Firebase Auth user exists, but Firestore profile is missing.",
+              firebaseUser.uid
             );
+
+
+            initialized = true;
 
 
             callback({
@@ -141,7 +137,10 @@ function startSessionListener(
                 firebaseUser,
 
               profile:
-                null
+                null,
+
+              profileMissing:
+                true
 
             });
 
@@ -151,13 +150,16 @@ function startSessionListener(
 
 
           // -----------------------------------------------
-          // Account status check
+          // Account status
           // -----------------------------------------------
 
           if (
             profile.accountStatus ===
             "deactivated"
           ) {
+
+            initialized = true;
+
 
             callback({
 
@@ -168,10 +170,10 @@ function startSessionListener(
                 false,
 
               user:
-                null,
+                firebaseUser,
 
               profile:
-                null,
+                profile,
 
               deactivated:
                 true
@@ -187,6 +189,9 @@ function startSessionListener(
           // Normal authenticated session
           // -----------------------------------------------
 
+          initialized = true;
+
+
           callback({
 
             initialized:
@@ -198,7 +203,10 @@ function startSessionListener(
             user:
               firebaseUser,
 
-            profile
+            profile,
+
+            profileMissing:
+              false
 
           });
 
@@ -208,6 +216,9 @@ function startSessionListener(
             "Unable to load user profile:",
             error
           );
+
+
+          initialized = true;
 
 
           callback({
@@ -237,17 +248,13 @@ function startSessionListener(
     );
 
 
-  // -------------------------------------------------------
-  // Return unsubscribe function.
-  // -------------------------------------------------------
-
   return unsubscribeAuth;
 
 }
 
 
 // =========================================================
-// GET CURRENT FIREBASE USER
+// CURRENT USER
 // =========================================================
 
 function getCurrentUser() {
@@ -258,7 +265,7 @@ function getCurrentUser() {
 
 
 // =========================================================
-// CHECK AUTHENTICATION
+// LOGIN CHECK
 // =========================================================
 
 function isUserLoggedIn() {

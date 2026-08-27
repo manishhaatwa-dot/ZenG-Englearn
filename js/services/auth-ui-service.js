@@ -216,7 +216,7 @@ function renderLoginView(
               font-size:11px;
             "
           >
-            Powered by oprenora.com
+            Powered by opnora.com
           </div>
 
         </div>

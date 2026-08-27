@@ -135,6 +135,10 @@ async function registerAccount({
     // -----------------------------------------------------
     // Create Firestore user profile
     // -----------------------------------------------------
+    //
+    // The profile is created immediately after Firebase
+    // Authentication succeeds.
+    //
 
     await createUserDocument(
 
@@ -142,18 +146,27 @@ async function registerAccount({
 
       {
 
+        uid:
+          firebaseUser.uid,
+
         displayName:
           finalDisplayName,
 
+        displayNameLower:
+          finalDisplayName.toLowerCase(),
+
         email:
           firebaseUser.email ||
-          email,
+          String(email).trim(),
 
         photoURL:
           "",
 
         nameChangeCount:
-          0
+          0,
+
+        accountStatus:
+          "active"
 
       }
 
@@ -177,7 +190,7 @@ async function registerAccount({
 
       email:
         firebaseUser.email ||
-        email
+        String(email).trim()
 
     };
 
@@ -189,9 +202,8 @@ async function registerAccount({
     // Rollback
     // -----------------------------------------------------
     //
-    // If Firebase Auth account was created but Firestore
-    // profile creation failed, remove the newly-created
-    // Auth account so we don't leave an incomplete account.
+    // If Authentication succeeded but profile creation
+    // failed, remove the newly-created Auth account.
     //
 
     if (

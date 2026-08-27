@@ -26,7 +26,7 @@ import {
 
 import {
   renderVocabularyPage
-} from "./pages/vocabulary-page.js
+} from "./pages/vocabulary-page.js";
 
 import {
   renderStoriesPage
@@ -35,7 +35,6 @@ import {
 import {
   renderChatPage
 } from "./pages/chat-page.js";
-
 
 // =========================================================
 // APP STATE

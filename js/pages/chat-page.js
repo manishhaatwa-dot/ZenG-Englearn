@@ -406,8 +406,7 @@ function ensureChatStyles() {
 
       border-radius:50%;
 
-      background:var(--surface-soft);
-
+     background:#fff0f5;
       display:flex;
 
       align-items:center;

@@ -4,7 +4,6 @@
 // =========================================================
 
 import {
-  isLoginIdAvailable,
   isDisplayNameAvailable
 } from "./user-service.js";
 
@@ -15,37 +14,21 @@ import {
 
 const MAX_NAME_CHANGES = 3;
 
-const MIN_LOGIN_ID_LENGTH = 4;
-const MAX_LOGIN_ID_LENGTH = 24;
-
 const MIN_DISPLAY_NAME_LENGTH = 2;
+
 const MAX_DISPLAY_NAME_LENGTH = 30;
-
-
-// =========================================================
-// LOGIN ID FORMAT
-// =========================================================
-//
-// Login ID is permanent.
-// It can contain:
-// - English letters
-// - numbers
-// - underscore
-// - hyphen
-//
-// Spaces and special characters are not allowed.
-//
-
-const LOGIN_ID_PATTERN =
-  /^[A-Za-z0-9_-]+$/;
 
 
 // =========================================================
 // DISPLAY NAME FORMAT
 // =========================================================
 //
-// Display name can contain normal letters, numbers and
-// spaces. We keep it simple and readable.
+// Display name can contain:
+// - English letters
+// - numbers
+// - spaces
+//
+// Leading/trailing spaces are removed during normalization.
 //
 
 const DISPLAY_NAME_PATTERN =
@@ -53,89 +36,22 @@ const DISPLAY_NAME_PATTERN =
 
 
 // =========================================================
-// NORMALIZE LOGIN ID
-// =========================================================
-
-function normalizeLoginId(loginId) {
-
-  return String(loginId || "")
-    .trim()
-    .toLowerCase();
-
-}
-
-
-// =========================================================
 // NORMALIZE DISPLAY NAME
 // =========================================================
 
-function normalizeDisplayName(displayName) {
+function normalizeDisplayName(
+  displayName
+) {
 
-  return String(displayName || "")
-    .trim();
+  return String(
+    displayName || ""
+  )
+    .trim()
+    .replace(
+      /\s+/g,
+      " "
+    );
 
-}
-
-
-// =========================================================
-// VALIDATE LOGIN ID
-// =========================================================
-
-function validateLoginId(loginId) {
-
-  const normalized =
-    normalizeLoginId(loginId);
-
-
-  if (!normalized) {
-    return {
-      valid: false,
-      message: "Login ID is required."
-    };
-  }
-
-
-  if (
-    normalized.length <
-    MIN_LOGIN_ID_LENGTH
-  ) {
-    return {
-      valid: false,
-      message:
-        `Login ID must contain at least ${MIN_LOGIN_ID_LENGTH} characters.`
-    };
-  }
-
-
-  if (
-    normalized.length >
-    MAX_LOGIN_ID_LENGTH
-  ) {
-    return {
-      valid: false,
-      message:
-        `Login ID cannot contain more than ${MAX_LOGIN_ID_LENGTH} characters.`
-    };
-  }
-
-
-  if (
-    !LOGIN_ID_PATTERN.test(
-      normalized
-    )
-  ) {
-    return {
-      valid: false,
-      message:
-        "Login ID can use only letters, numbers, underscore and hyphen."
-    };
-  }
-
-
-  return {
-    valid: true,
-    value: normalized
-  };
 }
 
 
@@ -154,10 +70,16 @@ function validateDisplayName(
 
 
   if (!normalized) {
+
     return {
+
       valid: false,
-      message: "Name is required."
+
+      message:
+        "Display name is required."
+
     };
+
   }
 
 
@@ -165,11 +87,16 @@ function validateDisplayName(
     normalized.length <
     MIN_DISPLAY_NAME_LENGTH
   ) {
+
     return {
+
       valid: false,
+
       message:
-        `Name must contain at least ${MIN_DISPLAY_NAME_LENGTH} characters.`
+        `Display name must contain at least ${MIN_DISPLAY_NAME_LENGTH} characters.`
+
     };
+
   }
 
 
@@ -177,11 +104,16 @@ function validateDisplayName(
     normalized.length >
     MAX_DISPLAY_NAME_LENGTH
   ) {
+
     return {
+
       valid: false,
+
       message:
-        `Name cannot contain more than ${MAX_DISPLAY_NAME_LENGTH} characters.`
+        `Display name cannot contain more than ${MAX_DISPLAY_NAME_LENGTH} characters.`
+
     };
+
   }
 
 
@@ -190,65 +122,38 @@ function validateDisplayName(
       normalized
     )
   ) {
+
     return {
+
       valid: false,
+
       message:
-        "Name can contain only letters, numbers and spaces."
+        "Display name can contain only letters, numbers and spaces."
+
     };
+
   }
 
 
   return {
+
     valid: true,
-    value: normalized
+
+    value:
+      normalized
+
   };
+
 }
 
 
 // =========================================================
-// CHECK LOGIN ID
+// CHECK UNIQUE DISPLAY NAME
 // =========================================================
-
-async function validateUniqueLoginId(
-  loginId
-) {
-
-  const validation =
-    validateLoginId(
-      loginId
-    );
-
-
-  if (!validation.valid) {
-    return validation;
-  }
-
-
-  const available =
-    await isLoginIdAvailable(
-      validation.value
-    );
-
-
-  if (!available) {
-    return {
-      valid: false,
-      message:
-        "This Login ID is already taken."
-    };
-  }
-
-
-  return {
-    valid: true,
-    value: validation.value
-  };
-}
-
-
-// =========================================================
-// CHECK DISPLAY NAME
-// =========================================================
+//
+// excludeUid is useful when an existing user changes their
+// own name. Their current name should not count as a duplicate.
+//
 
 async function validateUniqueDisplayName(
   displayName,
@@ -261,8 +166,12 @@ async function validateUniqueDisplayName(
     );
 
 
-  if (!validation.valid) {
+  if (
+    !validation.valid
+  ) {
+
     return validation;
+
   }
 
 
@@ -274,18 +183,28 @@ async function validateUniqueDisplayName(
 
 
   if (!available) {
+
     return {
+
       valid: false,
+
       message:
         "This name is already being used by another user."
+
     };
+
   }
 
 
   return {
+
     valid: true,
-    value: validation.value
+
+    value:
+      validation.value
+
   };
+
 }
 
 
@@ -303,8 +222,11 @@ function canChangeDisplayName(
     );
 
 
-  return count <
-    MAX_NAME_CHANGES;
+  return (
+    count <
+    MAX_NAME_CHANGES
+  );
+
 }
 
 
@@ -326,6 +248,7 @@ function getRemainingNameChanges(
     0,
     MAX_NAME_CHANGES - count
   );
+
 }
 
 
@@ -334,23 +257,21 @@ function getRemainingNameChanges(
 // =========================================================
 
 export {
+
   MAX_NAME_CHANGES,
 
-  MIN_LOGIN_ID_LENGTH,
-  MAX_LOGIN_ID_LENGTH,
-
   MIN_DISPLAY_NAME_LENGTH,
+
   MAX_DISPLAY_NAME_LENGTH,
 
-  normalizeLoginId,
   normalizeDisplayName,
 
-  validateLoginId,
   validateDisplayName,
 
-  validateUniqueLoginId,
   validateUniqueDisplayName,
 
   canChangeDisplayName,
+
   getRemainingNameChanges
+
 };

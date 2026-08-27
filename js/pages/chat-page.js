@@ -11,6 +11,7 @@
 // - Recent chats first
 // - Real-time conversations
 // - Real-time unread indicator
+// - New-message alert while chat is open
 // - Send messages
 // - Sent / seen ticks
 // - Message editing
@@ -20,6 +21,7 @@
 // - Firebase message deletion
 // - Stable chat IDs
 // - Dashboard navigation
+// - Atomic message + chat update
 //
 // Firestore:
 //
@@ -122,7 +124,11 @@ const ChatState = {
 
   blockedUsers: new Set(),
 
-  view: "inbox"
+  view: "inbox",
+
+  lastRenderedMessageCount: 0,
+
+  newMessageAlertVisible: false
 
 };
 
@@ -176,10 +182,6 @@ function getCurrentUser() {
 
 // =========================================================
 // CHAT ID
-// =========================================================
-//
-// Sorting guarantees that both users generate the exact
-// same chat ID and participants order.
 // =========================================================
 
 function getParticipantIds(
@@ -301,6 +303,10 @@ function ensureChatStyles() {
 
   style.textContent = `
 
+    /* =====================================================
+       CHAT PAGE
+       ===================================================== */
+
     .zeng-chat-page {
 
       width:min(100%,760px);
@@ -309,6 +315,10 @@ function ensureChatStyles() {
 
     }
 
+
+    /* =====================================================
+       BACK BUTTON
+       ===================================================== */
 
     .zeng-chat-back {
 
@@ -329,36 +339,57 @@ function ensureChatStyles() {
     }
 
 
+    /* =====================================================
+       INBOX HEADER
+       ===================================================== */
+
     .zeng-chat-header {
 
       margin-top:10px;
 
-      padding:20px;
+      padding:18px;
 
     }
 
 
-    .zeng-chat-header-title {
+    .zeng-inbox-title-row {
 
-      font-size:23px;
+      display:flex;
+
+      align-items:center;
+
+      justify-content:space-between;
+
+      gap:10px;
+
+    }
+
+
+    .zeng-inbox-title {
+
+      font-size:19px;
 
       font-weight:850;
 
     }
 
 
-    .zeng-chat-header-text {
+    .zeng-inbox-subtitle {
 
-      margin-top:6px;
+      margin-top:4px;
 
       color:var(--text-secondary);
 
-      font-size:12px;
+      font-size:10px;
 
       line-height:1.5;
 
     }
 
+
+    /* =====================================================
+       USER LIST
+       ===================================================== */
 
     .zeng-user-list {
 
@@ -366,7 +397,7 @@ function ensureChatStyles() {
 
       flex-direction:column;
 
-      gap:8px;
+      gap:7px;
 
       margin-top:14px;
 
@@ -383,7 +414,7 @@ function ensureChatStyles() {
 
       cursor:pointer;
 
-      padding:13px;
+      padding:12px;
 
       display:flex;
 
@@ -396,24 +427,32 @@ function ensureChatStyles() {
     }
 
 
+    .zeng-user-card:hover {
+
+      transform:translateY(-1px);
+
+    }
+
+
     .zeng-user-avatar {
 
-      width:46px;
+      width:45px;
 
-      height:46px;
+      height:45px;
 
-      min-width:46px;
+      min-width:45px;
 
       border-radius:50%;
 
-     background:#fff0f5;
+      background:#fff0f5;
+
       display:flex;
 
       align-items:center;
 
       justify-content:center;
 
-      font-size:22px;
+      font-size:21px;
 
       overflow:hidden;
 
@@ -459,7 +498,7 @@ function ensureChatStyles() {
 
     .zeng-user-status {
 
-      margin-top:3px;
+      margin-top:2px;
 
       color:var(--text-secondary);
 
@@ -515,6 +554,10 @@ function ensureChatStyles() {
     }
 
 
+    /* =====================================================
+       UNREAD
+       ===================================================== */
+
     .zeng-unread-dot {
 
       width:10px;
@@ -528,6 +571,25 @@ function ensureChatStyles() {
       background:#e53935;
 
       display:block;
+
+    }
+
+
+    .zeng-new-message-badge {
+
+      width:9px;
+
+      height:9px;
+
+      min-width:9px;
+
+      border-radius:50%;
+
+      background:#e53935;
+
+      display:inline-block;
+
+      flex-shrink:0;
 
     }
 
@@ -549,6 +611,10 @@ function ensureChatStyles() {
     }
 
 
+    /* =====================================================
+       EMPTY
+       ===================================================== */
+
     .zeng-chat-empty {
 
       padding:30px 18px;
@@ -564,6 +630,23 @@ function ensureChatStyles() {
     }
 
 
+    .zeng-chat-loading {
+
+      padding:30px;
+
+      text-align:center;
+
+      color:var(--text-secondary);
+
+      font-size:12px;
+
+    }
+
+
+    /* =====================================================
+       CONVERSATION
+       ===================================================== */
+
     .zeng-conversation {
 
       display:flex;
@@ -577,9 +660,13 @@ function ensureChatStyles() {
     }
 
 
+    /* =====================================================
+       CONVERSATION HEADER
+       ===================================================== */
+
     .zeng-conversation-header {
 
-      padding:11px 10px;
+      padding:10px;
 
       display:flex;
 
@@ -589,8 +676,13 @@ function ensureChatStyles() {
 
       border-radius:16px;
 
-background:#fff0f5;
-      box-shadow:var(--shadow, 0 2px 12px rgba(0,0,0,.06));
+      background:#fff0f5;
+
+      box-shadow:
+        var(
+          --shadow,
+          0 2px 12px rgba(0,0,0,.06)
+        );
 
       position:relative;
 
@@ -666,6 +758,10 @@ background:#fff0f5;
     }
 
 
+    /* =====================================================
+       CHAT MENU
+       ===================================================== */
+
     .zeng-chat-menu-panel {
 
       position:absolute;
@@ -681,9 +777,11 @@ background:#fff0f5;
       padding:6px;
 
       border-radius:13px;
-background:#fff0f5;
 
-      box-shadow:0 8px 30px rgba(0,0,0,.15);
+      background:#fff0f5;
+
+      box-shadow:
+        0 8px 30px rgba(0,0,0,.15);
 
       display:none;
 
@@ -722,7 +820,7 @@ background:#fff0f5;
 
     .zeng-chat-menu-item:hover {
 
-   background:#fff0f5;
+      background:#ffe4ef;
 
     }
 
@@ -732,109 +830,115 @@ background:#fff0f5;
       color:#d32f2f;
 
     }
-.zeng-messages {
-
-  flex:1;
-
-  overflow-y:auto;
-
-  padding:12px 3px 8px;
-
-  display:flex;
-
-  flex-direction:column;
-
-  gap:6px;
-
-  overscroll-behavior:contain;
-
-}
 
 
-.zeng-message-row {
+    /* =====================================================
+       MESSAGES
+       ===================================================== */
 
-  display:flex;
+    .zeng-messages {
 
-  width:100%;
+      flex:1;
 
-  padding:0 2px;
+      overflow-y:auto;
 
-}
+      padding:12px 3px 8px;
 
+      display:flex;
 
-.zeng-message-row.mine {
+      flex-direction:column;
 
-  justify-content:flex-end;
+      gap:6px;
 
-}
+      overscroll-behavior:contain;
 
-
-.zeng-message-row.theirs {
-
-  justify-content:flex-start;
-
-}
+    }
 
 
-.zeng-message {
+    .zeng-message-row {
 
-  max-width:min(82%,520px);
+      display:flex;
 
-  padding:8px 10px 7px;
+      width:100%;
 
-  border-radius:15px;
+      padding:0 2px;
 
-  position:relative;
-
-  line-height:1.4;
-
-  box-sizing:border-box;
-
-  word-break:break-word;
-
-}
+    }
 
 
-.zeng-message.mine {
+    .zeng-message-row.mine {
 
-background:#79cfc5;
+      justify-content:flex-end;
 
-  color:white;
-
-  border-bottom-right-radius:5px;
-
-}
+    }
 
 
-.zeng-message.theirs {
+    .zeng-message-row.theirs {
 
- background:#fff0f5;
+      justify-content:flex-start;
 
-  color:var(--text);
-
-  border:1px solid var(--border);
-
-  border-bottom-left-radius:5px;
-
-}
+    }
 
 
-.zeng-message-content {
+    .zeng-message {
 
-  display:flex;
+      max-width:min(82%,520px);
 
-  align-items:flex-end;
+      padding:7px 9px 6px;
 
-  gap:7px;
+      border-radius:15px;
 
-}
+      position:relative;
+
+      line-height:1.35;
+
+      box-sizing:border-box;
+
+      word-break:break-word;
+
+    }
+
+
+    .zeng-message.mine {
+
+      background:#79cfc5;
+
+      color:white;
+
+      border-bottom-right-radius:5px;
+
+    }
+
+
+    .zeng-message.theirs {
+
+      background:#fff0f5;
+
+      color:var(--text);
+
+      border:1px solid var(--border);
+
+      border-bottom-left-radius:5px;
+
+    }
+
+
+    .zeng-message-content {
+
+      display:flex;
+
+      align-items:flex-end;
+
+      gap:6px;
+
+    }
 
 
     .zeng-message-text {
 
       font-size:13px;
 
-      line-height:1.45;
+      line-height:1.4;
 
       white-space:pre-wrap;
 
@@ -851,7 +955,7 @@ background:#79cfc5;
 
       align-items:center;
 
-      gap:4px;
+      gap:3px;
 
       flex-shrink:0;
 
@@ -911,6 +1015,80 @@ background:#79cfc5;
     }
 
 
+    /* =====================================================
+       NEW MESSAGE ALERT
+       ===================================================== */
+
+    .zeng-new-message-alert {
+
+      display:none;
+
+      align-items:center;
+
+      gap:8px;
+
+      padding:8px 10px;
+
+      margin-bottom:4px;
+
+      border-radius:11px;
+
+      background:#fff0f0;
+
+      border:1px solid #ef9a9a;
+
+      color:#c62828;
+
+      font-size:11px;
+
+      font-weight:750;
+
+      cursor:pointer;
+
+    }
+
+
+    .zeng-new-message-alert.visible {
+
+      display:flex;
+
+    }
+
+
+    .zeng-new-message-alert-dot {
+
+      width:8px;
+
+      height:8px;
+
+      min-width:8px;
+
+      border-radius:50%;
+
+      background:#e53935;
+
+    }
+
+
+    .zeng-new-message-alert-text {
+
+      flex:1;
+
+      min-width:0;
+
+      overflow:hidden;
+
+      white-space:nowrap;
+
+      text-overflow:ellipsis;
+
+    }
+
+
+    /* =====================================================
+       COMPOSER
+       ===================================================== */
+
     .zeng-message-composer-area {
 
       flex-shrink:0;
@@ -947,7 +1125,8 @@ background:#79cfc5;
 
       padding:11px 12px;
 
-    background:#fff0f5;
+      background:#fff0f5;
+
       color:var(--text);
 
       font:inherit;
@@ -957,6 +1136,8 @@ background:#79cfc5;
       outline:none;
 
       line-height:1.35;
+
+      box-sizing:border-box;
 
     }
 
@@ -978,7 +1159,7 @@ background:#79cfc5;
 
       border-radius:14px;
 
-    background:#79cfc5;
+      background:#79cfc5;
 
       color:white;
 
@@ -999,6 +1180,10 @@ background:#79cfc5;
 
     }
 
+
+    /* =====================================================
+       EDIT BAR
+       ===================================================== */
 
     .zeng-edit-bar {
 
@@ -1049,13 +1234,17 @@ background:#79cfc5;
     }
 
 
+    /* =====================================================
+       BLOCKED
+       ===================================================== */
+
     .zeng-blocked-note {
 
       padding:12px;
 
       border-radius:12px;
 
-     background:#fff0f5;
+      background:#fff0f5;
 
       color:var(--text-secondary);
 
@@ -1068,68 +1257,9 @@ background:#79cfc5;
     }
 
 
-    .zeng-chat-loading {
-
-      padding:30px;
-
-      text-align:center;
-
-      color:var(--text-secondary);
-
-      font-size:12px;
-
-    }
-
-
-    .zeng-inbox-title-row {
-
-      display:flex;
-
-      align-items:center;
-
-      justify-content:space-between;
-
-      gap:10px;
-
-    }
-
-
-    .zeng-inbox-title {
-
-      font-size:18px;
-
-      font-weight:850;
-
-    }
-
-
-    .zeng-inbox-subtitle {
-
-      margin-top:3px;
-
-      color:var(--text-secondary);
-
-      font-size:10px;
-
-    }
-
-
-    .zeng-new-message-badge {
-
-      width:9px;
-
-      height:9px;
-
-      border-radius:50%;
-
-      background:#e53935;
-
-      display:inline-block;
-
-      flex-shrink:0;
-
-    }
-
+    /* =====================================================
+       MOBILE
+       ===================================================== */
 
     @media (max-width:600px) {
 
@@ -1139,17 +1269,20 @@ background:#79cfc5;
 
       }
 
+
       .zeng-message {
 
         max-width:89%;
 
       }
 
+
       .zeng-message-content {
 
-        gap:6px;
+        gap:5px;
 
       }
+
 
       .zeng-message-text {
 
@@ -1535,6 +1668,45 @@ function startConversationListener(
           conversations;
 
 
+        // ---------------------------------------------
+        // If currently open chat receives a new message,
+        // show red alert above composer.
+        // ---------------------------------------------
+
+        if (
+          ChatState.view ===
+            "conversation" &&
+          ChatState.selectedUser
+        ) {
+
+          const selectedUid =
+            ChatState.selectedUser.id;
+
+
+          const conversation =
+            conversations[
+              selectedUid
+            ];
+
+
+          if (
+            conversation &&
+            conversation.lastSenderId !==
+              currentUid &&
+            conversation.unreadFor?.includes(
+              currentUid
+            )
+          ) {
+
+            showNewMessageAlert(
+              conversation.lastMessage
+            );
+
+          }
+
+        }
+
+
         onUpdate?.();
 
       },
@@ -1588,8 +1760,6 @@ function getSortedInboxUsers() {
           ?.toMillis?.() || 0;
 
 
-      // Existing conversations with recent activity
-      // always come first.
       if (
         timeA !==
         timeB
@@ -1760,12 +1930,14 @@ function renderInbox(
                   )}
                 </div>
 
+
                 ${
                   unread
                   ?
                   `<span
                     class="zeng-new-message-badge"
                     aria-label="New message"
+                    title="New message"
                   ></span>`
                   :
                   ""
@@ -1927,6 +2099,79 @@ async function markConversationRead(
 
 
 // =========================================================
+// NEW MESSAGE ALERT
+// =========================================================
+
+function showNewMessageAlert(
+  text
+) {
+
+  const alertBox =
+    document.getElementById(
+      "zengNewMessageAlert"
+    );
+
+
+  const alertText =
+    document.getElementById(
+      "zengNewMessageAlertText"
+    );
+
+
+  if (
+    !alertBox
+  ) {
+
+    return;
+
+  }
+
+
+  if (alertText) {
+
+    alertText.textContent =
+      `New message: ${formatPreview(
+        text
+      )}`;
+
+  }
+
+
+  alertBox.classList.add(
+    "visible"
+  );
+
+
+  ChatState.newMessageAlertVisible =
+    true;
+
+}
+
+
+// =========================================================
+// HIDE NEW MESSAGE ALERT
+// =========================================================
+
+function hideNewMessageAlert() {
+
+  const alertBox =
+    document.getElementById(
+      "zengNewMessageAlert"
+    );
+
+
+  alertBox?.classList.remove(
+    "visible"
+  );
+
+
+  ChatState.newMessageAlertVisible =
+    false;
+
+}
+
+
+// =========================================================
 // RENDER CHAT HOME / INBOX
 // =========================================================
 
@@ -1945,6 +2190,12 @@ function renderChatHome(
 
   ChatState.editingMessageId =
     null;
+
+  ChatState.lastRenderedMessageCount =
+    0;
+
+  ChatState.newMessageAlertVisible =
+    false;
 
 
   cleanupMessageListener();
@@ -1999,8 +2250,8 @@ function renderChatHome(
 
           <div
             style="
-              margin-top:20px;
-              font-size:18px;
+              margin-top:18px;
+              font-size:17px;
               font-weight:800;
             "
           >
@@ -2058,9 +2309,16 @@ function renderChatHome(
   startUsersListener(
     () => {
 
-      renderInbox(
-        container
-      );
+      if (
+        ChatState.view ===
+        "inbox"
+      ) {
+
+        renderInbox(
+          container
+        );
+
+      }
 
     }
   );
@@ -2069,9 +2327,16 @@ function renderChatHome(
   startConversationListener(
     () => {
 
-      renderInbox(
-        container
-      );
+      if (
+        ChatState.view ===
+        "inbox"
+      ) {
+
+        renderInbox(
+          container
+        );
+
+      }
 
     }
   );
@@ -2119,6 +2384,12 @@ async function openConversation(
 
   ChatState.editingMessageId =
     null;
+
+  ChatState.lastRenderedMessageCount =
+    0;
+
+  ChatState.newMessageAlertVisible =
+    false;
 
 
   const chatId =
@@ -2267,6 +2538,36 @@ async function openConversation(
 
             <div class="zeng-message-composer-area">
 
+
+              <!-- =======================================
+                   NEW MESSAGE ALERT
+                   ======================================= -->
+
+              <div
+                id="zengNewMessageAlert"
+                class="zeng-new-message-alert"
+                role="status"
+              >
+
+                <span
+                  class="zeng-new-message-alert-dot"
+                ></span>
+
+
+                <span
+                  id="zengNewMessageAlertText"
+                  class="zeng-new-message-alert-text"
+                >
+                  New message
+                </span>
+
+              </div>
+
+
+              <!-- =======================================
+                   EDIT BAR
+                   ======================================= -->
+
               <div
                 id="zengEditBar"
                 class="zeng-edit-bar"
@@ -2325,6 +2626,49 @@ async function openConversation(
     </div>
 
   `;
+
+
+  // =====================================================
+  // NEW ALERT CLICK
+  // =====================================================
+
+  document
+    .getElementById(
+      "zengNewMessageAlert"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        const messagesBox =
+          document.getElementById(
+            "zengMessages"
+          );
+
+
+        if (messagesBox) {
+
+          messagesBox.scrollTo({
+            top:
+              messagesBox.scrollHeight,
+
+            behavior:
+              "smooth"
+
+          });
+
+        }
+
+
+        hideNewMessageAlert();
+
+
+        markConversationRead(
+          chatId
+        );
+
+      }
+    );
 
 
   // =====================================================
@@ -2433,9 +2777,9 @@ async function openConversation(
           );
 
 
-          ChatState.conversations[
+          delete ChatState.conversations[
             selectedUser.id
-          ] = undefined;
+          ];
 
 
           cleanupMessageListener();
@@ -2658,7 +3002,7 @@ async function openConversation(
 
 
   // =====================================================
-  // MARK CURRENT CHAT READ
+  // MARK EXISTING CHAT READ
   // =====================================================
 
   try {
@@ -2750,13 +3094,13 @@ function startMessagesListener(
         );
 
 
-        // ---------------------------------------------
-        // Mark incoming messages as seen
-        // ---------------------------------------------
-
         const currentUid =
           ChatState.currentUser?.uid;
 
+
+        // ---------------------------------------------
+        // Find incoming unseen messages
+        // ---------------------------------------------
 
         const unseenIncoming =
           snapshot.docs.filter(
@@ -2780,6 +3124,14 @@ function startMessagesListener(
             }
           );
 
+
+        // ---------------------------------------------
+        // Mark incoming messages seen.
+        //
+        // This does NOT remove the visual new-message
+        // alert immediately if the conversation listener
+        // already detected it.
+        // ---------------------------------------------
 
         for (
           const messageDoc
@@ -2812,6 +3164,10 @@ function startMessagesListener(
 
         }
 
+
+        // ---------------------------------------------
+        // Existing chat is considered read after opening.
+        // ---------------------------------------------
 
         await markConversationRead(
           chatId
@@ -2899,6 +3255,11 @@ function renderMessages(
       </div>
 
     `;
+
+
+    ChatState.lastRenderedMessageCount =
+      0;
+
 
     return;
 
@@ -3072,6 +3433,10 @@ function renderMessages(
 
   messagesBox.scrollTop =
     messagesBox.scrollHeight;
+
+
+  ChatState.lastRenderedMessageCount =
+    messages.length;
 
 }
 
@@ -3363,12 +3728,11 @@ function cancelMessageEdit() {
 // ENSURE CHAT DOCUMENT
 // =========================================================
 //
+// Creates the chat document when required.
+//
 // IMPORTANT:
-//
-// The chat document is created BEFORE the message.
-//
-// This prevents the permission problem that happened
-// previously when the message was created first.
+// Actual message sending uses a single Firestore batch,
+// so message + chat metadata are written together.
 // =========================================================
 
 async function ensureChatDocument(
@@ -3422,6 +3786,23 @@ async function ensureChatDocument(
     }
 
 
+    if (
+      !existing.participants.includes(
+        currentUid
+      )
+      ||
+      !existing.participants.includes(
+        selectedUid
+      )
+    ) {
+
+      throw new Error(
+        "You do not belong to this chat."
+      );
+
+    }
+
+
     return chatRef;
 
   }
@@ -3459,6 +3840,23 @@ async function ensureChatDocument(
 
 // =========================================================
 // SEND MESSAGE
+// =========================================================
+//
+// IMPORTANT FIX:
+//
+// Previous version did:
+//
+// 1. set message
+// 2. update chat
+//
+// If step 2 failed because of Firestore rules,
+// the message was already saved but UI showed
+// "Unable to send message".
+//
+// This version uses ONE writeBatch for:
+// - chat creation/update
+// - message creation
+//
 // =========================================================
 
 async function sendMessage(
@@ -3553,7 +3951,7 @@ async function sendMessage(
 
 
     // ---------------------------------------------------
-    // FIRST ENSURE CHAT EXISTS
+    // Verify/create chat first.
     // ---------------------------------------------------
 
     const chatRef =
@@ -3565,21 +3963,17 @@ async function sendMessage(
 
 
     // ---------------------------------------------------
-    // CREATE MESSAGE
+    // New message document.
     // ---------------------------------------------------
-
-    const messagesRef =
-      collection(
-        db,
-        CHATS_COLLECTION,
-        chatId,
-        MESSAGES_SUBCOLLECTION
-      );
-
 
     const messageRef =
       doc(
-        messagesRef
+        collection(
+          db,
+          CHATS_COLLECTION,
+          chatId,
+          MESSAGES_SUBCOLLECTION
+        )
       );
 
 
@@ -3587,7 +3981,17 @@ async function sendMessage(
       serverTimestamp();
 
 
-    await setDoc(
+    // ---------------------------------------------------
+    // Atomic batch.
+    // ---------------------------------------------------
+
+    const batch =
+      writeBatch(
+        db
+      );
+
+
+    batch.set(
       messageRef,
       {
 
@@ -3615,11 +4019,7 @@ async function sendMessage(
     );
 
 
-    // ---------------------------------------------------
-    // UPDATE CHAT PREVIEW + UNREAD
-    // ---------------------------------------------------
-
-    await updateDoc(
+    batch.update(
       chatRef,
       {
 
@@ -3642,11 +4042,25 @@ async function sendMessage(
     );
 
 
+    // ---------------------------------------------------
+    // ONE commit.
+    // ---------------------------------------------------
+
+    await batch.commit();
+
+
+    // ---------------------------------------------------
+    // Clear composer.
+    // ---------------------------------------------------
+
     input.value =
       "";
 
     input.style.height =
       "auto";
+
+
+    hideNewMessageAlert();
 
   } catch (error) {
 
@@ -3786,7 +4200,7 @@ async function saveEditedMessage(
 
 
     // ---------------------------------------------------
-    // Check whether edited message is latest.
+    // Update inbox preview only if this is latest message.
     // ---------------------------------------------------
 
     const messagesSnapshot =
@@ -3865,9 +4279,11 @@ async function saveEditedMessage(
 // CLEAR CHAT
 // =========================================================
 //
-// Deletes actual message documents from Firebase.
+// Deletes:
+// 1. All messages
+// 2. Chat metadata document
 //
-// Uses chunks below the Firestore batch limit.
+// This reduces Firestore storage usage.
 // =========================================================
 
 async function clearChat(
@@ -4000,7 +4416,7 @@ async function clearChat(
 
 
   // -----------------------------------------------------
-  // Delete chat metadata after all messages are deleted.
+  // Delete chat metadata.
   // -----------------------------------------------------
 
   await deleteDoc(

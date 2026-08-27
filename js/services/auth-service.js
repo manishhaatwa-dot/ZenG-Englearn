@@ -7,9 +7,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged,
-  updateProfile,
-  deleteUser
+  deleteUser,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 import {
@@ -18,124 +18,190 @@ import {
 
 
 // =========================================================
-// REGISTER
+// AUTH PERSISTENCE
 // =========================================================
+//
+// User remains logged in across browser/app restarts.
+// Logout happens only when the user explicitly chooses
+// Logout from the application.
+//
 
-async function registerUser(email, password) {
-  if (!email || !password) {
-    throw new Error("Email and password are required.");
+let persistenceReady = false;
+
+
+async function ensureAuthPersistence() {
+
+  if (persistenceReady) {
+
+    return;
+
   }
 
-  const result =
+
+  await setPersistence(
+    auth,
+    browserLocalPersistence
+  );
+
+
+  persistenceReady = true;
+
+}
+
+
+// =========================================================
+// REGISTER USER
+// =========================================================
+
+async function registerUser(
+  email,
+  password
+) {
+
+  if (!email) {
+
+    throw new Error(
+      "Email is required."
+    );
+
+  }
+
+
+  if (!password) {
+
+    throw new Error(
+      "Password is required."
+    );
+
+  }
+
+
+  await ensureAuthPersistence();
+
+
+  const credential =
     await createUserWithEmailAndPassword(
       auth,
       email.trim(),
       password
     );
 
-  return result.user;
+
+  return credential.user;
+
 }
 
 
 // =========================================================
-// LOGIN
+// LOGIN USER
 // =========================================================
 
-async function loginUser(email, password) {
-  if (!email || !password) {
-    throw new Error("Email and password are required.");
+async function loginUser(
+  email,
+  password
+) {
+
+  if (!email) {
+
+    throw new Error(
+      "Email is required."
+    );
+
   }
 
-  const result =
+
+  if (!password) {
+
+    throw new Error(
+      "Password is required."
+    );
+
+  }
+
+
+  await ensureAuthPersistence();
+
+
+  const credential =
     await signInWithEmailAndPassword(
       auth,
       email.trim(),
       password
     );
 
-  return result.user;
+
+  return credential.user;
+
 }
 
 
 // =========================================================
-// LOGOUT
+// LOGOUT USER
 // =========================================================
+//
+// This function is only called when the user manually
+// chooses Logout from the application.
+//
 
 async function logoutUser() {
-  await signOut(auth);
+
+  await signOut(
+    auth
+  );
+
 }
 
 
 // =========================================================
-// UPDATE AUTH PROFILE
+// DELETE CURRENT AUTH ACCOUNT
 // =========================================================
 //
-// This will later be used after the user's unique
-// display name/profile system is implemented.
-//
-
-async function updateUserProfile(displayName, photoURL = null) {
-  if (!auth.currentUser) {
-    throw new Error("No authenticated user found.");
-  }
-
-  await updateProfile(auth.currentUser, {
-    displayName:
-      displayName
-        ? displayName.trim()
-        : auth.currentUser.displayName,
-
-    photoURL:
-      photoURL !== null
-        ? photoURL
-        : auth.currentUser.photoURL
-  });
-
-  return auth.currentUser;
-}
-
-
-// =========================================================
-// DELETE CURRENT ACCOUNT
-// =========================================================
-//
-// Account deletion will later be combined with deletion
-// of the user's Firestore/Storage data.
+// Used later by the complete account deletion flow.
 //
 
 async function deleteCurrentAuthAccount() {
-  if (!auth.currentUser) {
-    throw new Error("No authenticated user found.");
-  }
 
-  await deleteUser(auth.currentUser);
-}
+  const currentUser =
+    auth.currentUser;
 
 
-// =========================================================
-// AUTH STATE LISTENER
-// =========================================================
+  if (!currentUser) {
 
-function watchAuthState(callback) {
-  if (typeof callback !== "function") {
     throw new Error(
-      "Auth state callback must be a function."
+      "No authenticated user found."
     );
+
   }
 
-  return onAuthStateChanged(
-    auth,
-    callback
+
+  await deleteUser(
+    currentUser
   );
+
 }
 
 
 // =========================================================
-// CURRENT USER
+// GET CURRENT USER
 // =========================================================
 
-function getCurrentUser() {
+function getCurrentAuthUser() {
+
   return auth.currentUser;
+
+}
+
+
+// =========================================================
+// CHECK LOGIN STATE
+// =========================================================
+
+function isAuthenticated() {
+
+  return Boolean(
+    auth.currentUser
+  );
+
 }
 
 
@@ -144,11 +210,19 @@ function getCurrentUser() {
 // =========================================================
 
 export {
+
+  ensureAuthPersistence,
+
   registerUser,
+
   loginUser,
+
   logoutUser,
-  updateUserProfile,
+
   deleteCurrentAuthAccount,
-  watchAuthState,
-  getCurrentUser
+
+  getCurrentAuthUser,
+
+  isAuthenticated
+
 };

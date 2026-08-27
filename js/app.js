@@ -20,6 +20,13 @@ import {
   renderAuthView
 } from "./services/auth-ui-service.js";
 
+import {
+  renderGrammarPage
+} from "./pages/grammar-page.js";
+
+import {
+  renderVocabularyPage
+} from "./pages/vocabulary-page.js";
 
 // =========================================================
 // APP STATE
@@ -358,6 +365,32 @@ async function openPage(
 
     }
 
+    // -------------------------------------------------
+// VOCABULARY
+// -------------------------------------------------
+
+if (
+  page === "vocabulary"
+) {
+
+  AppState.currentPage =
+    "vocabulary";
+
+
+  renderVocabularyPage(
+    appRoot,
+    {
+      displayName:
+        AppState.profile?.displayName ||
+        "Learner"
+    }
+  );
+
+
+  return;
+
+}
+    
 
     throw new Error(
       `Page module "${page}-page.js" does not export renderPage().`

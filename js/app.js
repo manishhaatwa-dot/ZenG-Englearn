@@ -22,6 +22,27 @@ import {
 
 
 // =========================================================
+// LEARNING PAGES
+// =========================================================
+
+import {
+  renderGrammarPage
+} from "./pages/grammar-page.js";
+
+import {
+  renderVocabularyPage
+} from "./pages/vocabulary-page.js";
+
+import {
+  renderStoriesPage
+} from "./pages/stories-page.js";
+
+import {
+  renderChatPage
+} from "./pages/chat-page.js";
+
+
+// =========================================================
 // APP STATE
 // =========================================================
 
@@ -157,231 +178,6 @@ function escapeHTML(
 
 
 // =========================================================
-// PAGE MODULE LOADER
-// =========================================================
-//
-// Page files follow this convention:
-//
-// grammar-page.js
-// vocabulary-page.js
-// stories-page.js
-// chat-page.js
-// profile-page.js
-//
-// Future page files should export:
-//
-// renderPage(container, options)
-//
-// This means app.js does not need to be changed every
-// time a new section is created.
-// =========================================================
-
-async function openPage(
-  page
-) {
-
-  if (!appRoot) {
-    return;
-  }
-
-
-  // -------------------------------------------------------
-  // Only allow known internal pages.
-  // -------------------------------------------------------
-
-  const allowedPages = [
-
-    "grammar",
-
-    "vocabulary",
-
-    "stories",
-
-    "chat",
-
-    "profile"
-
-  ];
-
-
-  if (
-    !allowedPages.includes(
-      page
-    )
-  ) {
-
-    console.warn(
-      "Unknown ZenG page:",
-      page
-    );
-
-    return;
-
-  }
-
-
-  // -------------------------------------------------------
-  // User must be authenticated.
-  // -------------------------------------------------------
-
-  if (
-    !AppState.user ||
-    !AppState.profile
-  ) {
-
-    return;
-
-  }
-
-
-  AppState.currentPage =
-    page;
-
-
-  try {
-
-    // -----------------------------------------------------
-    // Show lightweight loading state while the page module
-    // is being loaded.
-    // -----------------------------------------------------
-
-    appRoot.innerHTML = `
-
-      <div class="page">
-
-        <div
-          class="page-container"
-          style="
-            min-height:100dvh;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-          "
-        >
-
-          <div
-            class="card"
-            style="
-              width:min(100%,430px);
-              text-align:center;
-              padding:28px;
-            "
-          >
-
-            <div
-              style="
-                font-size:34px;
-              "
-            >
-              🌿
-            </div>
-
-            <div
-              style="
-                margin-top:10px;
-                font-size:15px;
-                font-weight:800;
-              "
-            >
-              Loading...
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    `;
-
-
-    // -----------------------------------------------------
-    // Dynamic page import
-    // -----------------------------------------------------
-
-    const module =
-      await import(
-        `./pages/${page}-page.js`
-      );
-
-
-    // -----------------------------------------------------
-    // Preferred future API
-    // -----------------------------------------------------
-
-    if (
-      typeof module.renderPage ===
-      "function"
-    ) {
-
-      module.renderPage(
-        appRoot,
-        {
-
-          user:
-            AppState.user,
-
-          profile:
-            AppState.profile
-
-        }
-      );
-
-      return;
-
-    }
-
-
-    // -----------------------------------------------------
-    // Backward compatibility for current Grammar page.
-    // -----------------------------------------------------
-
-    if (
-      page === "grammar" &&
-      typeof module.renderGrammarPage ===
-        "function"
-    ) {
-
-      module.renderGrammarPage(
-        appRoot,
-        {
-
-          displayName:
-            AppState.profile?.displayName ||
-            "Learner"
-
-        }
-      );
-
-      return;
-
-    }
-
-
-    throw new Error(
-      `Page module "${page}-page.js" does not export renderPage().`
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      `Unable to open ${page} page:`,
-      error
-    );
-
-
-    renderPageError(
-      page
-    );
-
-  }
-
-}
-
-
-// =========================================================
 // PAGE ERROR
 // =========================================================
 
@@ -395,10 +191,14 @@ function renderPageError(
 
 
   const pageName =
-    String(page || "page")
+    String(
+      page || "page"
+    )
       .charAt(0)
       .toUpperCase() +
-    String(page || "page")
+    String(
+      page || "page"
+    )
       .slice(1);
 
 
@@ -442,7 +242,8 @@ function renderPageError(
               font-weight:800;
             "
           >
-            Unable to open ${escapeHTML(pageName)}
+            Unable to open
+            ${escapeHTML(pageName)}
           </div>
 
 
@@ -451,6 +252,7 @@ function renderPageError(
               margin-top:7px;
               color:var(--text-secondary);
               font-size:12px;
+              line-height:1.5;
             "
           >
             Please try again.
@@ -476,7 +278,7 @@ function renderPageError(
               font-size:11px;
             "
           >
-            Powered by opnora.com
+            Powered by Opnora.com
           </div>
 
         </div>
@@ -507,24 +309,438 @@ function renderPageError(
 
 
 // =========================================================
+// OPEN PAGE
+// =========================================================
+//
+// All dashboard sections are connected here.
+//
+// IMPORTANT:
+// Page-specific UI and Firebase logic stay inside their
+// own page files. app.js only controls navigation.
+//
+// Current pages:
+//
+// grammar-page.js
+// vocabulary-page.js
+// stories-page.js
+// chat-page.js
+//
+// This keeps the main application controller stable.
+// =========================================================
+
+async function openPage(
+  page
+) {
+
+  if (!appRoot) {
+    return;
+  }
+
+
+  // -------------------------------------------------------
+  // Allowed pages
+  // -------------------------------------------------------
+
+  const allowedPages = [
+
+    "grammar",
+
+    "vocabulary",
+
+    "stories",
+
+    "chat",
+
+    "profile"
+
+  ];
+
+
+  if (
+    !allowedPages.includes(
+      page
+    )
+  ) {
+
+    console.warn(
+      "Unknown ZenG page:",
+      page
+    );
+
+    return;
+
+  }
+
+
+  // -------------------------------------------------------
+  // Authentication check
+  // -------------------------------------------------------
+
+  if (
+    !AppState.user ||
+    !AppState.profile
+  ) {
+
+    console.warn(
+      "ZenG navigation blocked: user/profile unavailable."
+    );
+
+    return;
+
+  }
+
+
+  AppState.currentPage =
+    page;
+
+
+  try {
+
+    // -----------------------------------------------------
+    // Lightweight loading screen
+    // -----------------------------------------------------
+
+    appRoot.innerHTML = `
+
+      <div class="page">
+
+        <div
+          class="page-container"
+          style="
+            min-height:100dvh;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+          "
+        >
+
+          <div
+            class="card"
+            style="
+              width:min(100%,430px);
+              text-align:center;
+              padding:28px;
+            "
+          >
+
+            <div
+              style="
+                font-size:34px;
+              "
+            >
+              🌿
+            </div>
+
+
+            <div
+              style="
+                margin-top:10px;
+                font-size:15px;
+                font-weight:800;
+              "
+            >
+              Loading...
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    `;
+
+
+    // =====================================================
+    // GRAMMAR
+    // =====================================================
+
+    if (
+      page === "grammar"
+    ) {
+
+      if (
+        typeof renderGrammarPage !==
+        "function"
+      ) {
+
+        throw new Error(
+          "renderGrammarPage() is not available."
+        );
+
+      }
+
+
+      await renderGrammarPage(
+        appRoot,
+        {
+
+          displayName:
+            AppState.profile?.displayName ||
+            "Learner",
+
+          user:
+            AppState.user,
+
+          profile:
+            AppState.profile
+
+        }
+      );
+
+
+      return;
+
+    }
+
+
+    // =====================================================
+    // VOCABULARY
+    // =====================================================
+
+    if (
+      page === "vocabulary"
+    ) {
+
+      if (
+        typeof renderVocabularyPage !==
+        "function"
+      ) {
+
+        throw new Error(
+          "renderVocabularyPage() is not available."
+        );
+
+      }
+
+
+      await renderVocabularyPage(
+        appRoot,
+        {
+
+          displayName:
+            AppState.profile?.displayName ||
+            "Learner",
+
+          user:
+            AppState.user,
+
+          profile:
+            AppState.profile
+
+        }
+      );
+
+
+      return;
+
+    }
+
+
+    // =====================================================
+    // STORIES
+    // =====================================================
+
+    if (
+      page === "stories"
+    ) {
+
+      if (
+        typeof renderStoriesPage !==
+        "function"
+      ) {
+
+        throw new Error(
+          "renderStoriesPage() is not available."
+        );
+
+      }
+
+
+      await renderStoriesPage(
+        appRoot,
+        {
+
+          displayName:
+            AppState.profile?.displayName ||
+            "Learner",
+
+          user:
+            AppState.user,
+
+          profile:
+            AppState.profile
+
+        }
+      );
+
+
+      return;
+
+    }
+
+
+    // =====================================================
+    // CHAT
+    // =====================================================
+
+    if (
+      page === "chat"
+    ) {
+
+      if (
+        typeof renderChatPage !==
+        "function"
+      ) {
+
+        throw new Error(
+          "renderChatPage() is not available."
+        );
+
+      }
+
+
+      await renderChatPage(
+        appRoot,
+        {
+
+          user:
+            AppState.user,
+
+          profile:
+            AppState.profile,
+
+          displayName:
+            AppState.profile?.displayName ||
+            "Learner"
+
+        }
+      );
+
+
+      return;
+
+    }
+
+
+    // =====================================================
+    // PROFILE
+    // =====================================================
+    //
+    // Profile page is loaded dynamically so app.js does not
+    // break if its implementation is changed independently.
+    // =====================================================
+
+    if (
+      page === "profile"
+    ) {
+
+      const profileModule =
+        await import(
+          "./pages/profile-page.js"
+        );
+
+
+      if (
+        typeof profileModule.renderProfilePage ===
+        "function"
+      ) {
+
+        await profileModule.renderProfilePage(
+          appRoot,
+          {
+
+            user:
+              AppState.user,
+
+            profile:
+              AppState.profile,
+
+            displayName:
+              AppState.profile?.displayName ||
+              "Learner"
+
+          }
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        typeof profileModule.renderPage ===
+        "function"
+      ) {
+
+        await profileModule.renderPage(
+          appRoot,
+          {
+
+            user:
+              AppState.user,
+
+            profile:
+              AppState.profile
+
+          }
+        );
+
+
+        return;
+
+      }
+
+
+      throw new Error(
+        "profile-page.js does not export renderProfilePage() or renderPage()."
+      );
+
+    }
+
+
+    throw new Error(
+      `No renderer found for "${page}".`
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      `Unable to open ${page} page:`,
+      error
+    );
+
+
+    renderPageError(
+      page
+    );
+
+  }
+
+}
+
+
+// =========================================================
 // NAVIGATION
 // =========================================================
 //
-// This is the central navigation system.
+// Central navigation function.
 //
-// Dashboard cards only need:
+// Dashboard:
 //
 // data-dashboard-page="grammar"
-//
 // data-dashboard-page="vocabulary"
-//
 // data-dashboard-page="stories"
-//
 // data-dashboard-page="chat"
-//
 // data-dashboard-page="profile"
 //
-// No page-specific code is required here.
+// Pages can return to Dashboard by dispatching:
+//
+// zeng:navigate
+//
 // =========================================================
 
 async function navigateTo(
@@ -535,26 +751,30 @@ async function navigateTo(
     page === "dashboard"
   ) {
 
+    if (
+      !AppState.user ||
+      !AppState.profile
+    ) {
+
+      return;
+
+    }
+
+
     AppState.currentPage =
       "dashboard";
 
 
-    if (
-      AppState.user &&
-      AppState.profile
-    ) {
+    renderDashboard({
 
-      renderDashboard({
+      user:
+        AppState.user,
 
-        user:
-          AppState.user,
+      profile:
+        AppState.profile
 
-        profile:
-          AppState.profile
+    });
 
-      });
-
-    }
 
     return;
 
@@ -650,7 +870,9 @@ function renderDashboard(
                   color:var(--primary);
                 "
               >
-                Hello, ${escapeHTML(displayName)} 👋
+                Hello,
+                ${escapeHTML(displayName)}
+                👋
               </div>
 
             </div>
@@ -1130,7 +1352,7 @@ function renderDashboard(
               font-size:11px;
             "
           >
-            Powered by opnora.com
+            Powered by Opnora.com
           </div>
 
         </div>
@@ -1351,7 +1573,7 @@ async function handleSessionChange(
 
 
   // -------------------------------------------------------
-  // Firebase is still checking the saved session.
+  // Firebase is still checking saved session
   // -------------------------------------------------------
 
   if (
@@ -1399,14 +1621,17 @@ async function handleSessionChange(
 // INTERNAL NAVIGATION EVENTS
 // =========================================================
 //
-// Individual pages can navigate without modifying app.js.
-//
-// Example:
+// Any page can return to Dashboard:
 //
 // window.dispatchEvent(
-//   new CustomEvent("zeng:navigate", {
-//     detail: { page: "dashboard" }
-//   })
+//   new CustomEvent(
+//     "zeng:navigate",
+//     {
+//       detail:{
+//         page:"dashboard"
+//       }
+//     }
+//   )
 // );
 //
 // =========================================================
@@ -1485,6 +1710,7 @@ function startApp() {
                     style="
                       width:min(100%,430px);
                       text-align:center;
+                      padding:24px;
                     "
                   >
 
@@ -1513,6 +1739,7 @@ function startApp() {
                         margin-top:8px;
                         color:var(--text-secondary);
                         font-size:12px;
+                        line-height:1.5;
                       "
                     >
                       Please refresh the app and try again.
@@ -1526,7 +1753,7 @@ function startApp() {
                         font-size:11px;
                       "
                     >
-                      Powered by opnora.com
+                      Powered by Opnora.com
                     </div>
 
                   </div>
@@ -1577,6 +1804,7 @@ function startApp() {
               style="
                 width:min(100%,430px);
                 text-align:center;
+                padding:24px;
               "
             >
 
@@ -1605,6 +1833,7 @@ function startApp() {
                   margin-top:8px;
                   color:var(--text-secondary);
                   font-size:12px;
+                  line-height:1.5;
                 "
               >
                 Please refresh the page and try again.
@@ -1618,7 +1847,7 @@ function startApp() {
                   font-size:11px;
                 "
               >
-                Powered by opnora.com
+                Powered by Opnora.com
               </div>
 
             </div>

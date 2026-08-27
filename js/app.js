@@ -15,6 +15,9 @@ import {
   renderAuthView
 } from "./services/auth-ui-service.js";
 
+import {
+  renderGrammarPage
+} from "./pages/grammar-page.js";
 
 // =========================================================
 // APP STATE
@@ -706,32 +709,65 @@ function renderDashboard(
 
 
   dashboardCards.forEach(
-    (card) => {
+  (card) => {
 
-      card.addEventListener(
-        "click",
-        () => {
+    card.addEventListener(
+      "click",
+      () => {
 
-          const page =
-            card.dataset.dashboardPage;
+        const page =
+          card.dataset.dashboardPage;
 
 
-          console.log(
-            "ZenG dashboard section selected:",
-            page
+        console.log(
+          "ZenG dashboard section selected:",
+          page
+        );
+
+
+        // -------------------------------------------------
+        // GRAMMAR
+        // -------------------------------------------------
+
+        if (
+          page === "grammar"
+        ) {
+
+          AppState.currentPage =
+            "grammar";
+
+
+          renderGrammarPage(
+            appRoot,
+            {
+              displayName:
+                AppState.profile?.displayName ||
+                "Learner"
+            }
           );
 
 
-          alert(
-            `${page.charAt(0).toUpperCase() + page.slice(1)} section will be connected next.`
-          );
+          return;
 
         }
-      );
 
-    }
-  );
 
+        // -------------------------------------------------
+        // OTHER SECTIONS
+        // -------------------------------------------------
+        //
+        // These will be connected one-by-one.
+        //
+
+        alert(
+          `${page.charAt(0).toUpperCase() + page.slice(1)} section will be connected next.`
+        );
+
+      }
+    );
+
+  }
+);
 
   // =======================================================
   // LOGOUT
@@ -945,6 +981,47 @@ async function handleSessionChange(
 
 }
 
+// =========================================================
+// INTERNAL NAVIGATION
+// =========================================================
+
+window.addEventListener(
+  "zeng:navigate",
+  (event) => {
+
+    const page =
+      event.detail?.page;
+
+
+    if (
+      page === "dashboard"
+    ) {
+
+      AppState.currentPage =
+        "dashboard";
+
+
+      if (
+        AppState.user &&
+        AppState.profile
+      ) {
+
+        renderDashboard({
+
+          user:
+            AppState.user,
+
+          profile:
+            AppState.profile
+
+        });
+
+      }
+
+    }
+
+  }
+);
 
 // =========================================================
 // START APP

@@ -735,98 +735,102 @@ function ensureChatStyles() {
       color:#d32f2f;
 
     }
+.zeng-messages {
+
+  flex:1;
+
+  overflow-y:auto;
+
+  padding:12px 3px 8px;
+
+  display:flex;
+
+  flex-direction:column;
+
+  gap:6px;
+
+  overscroll-behavior:contain;
+
+}
 
 
-    .zeng-messages {
+.zeng-message-row {
 
-      flex:1;
+  display:flex;
 
-      overflow-y:auto;
+  width:100%;
 
-      padding:12px 3px 8px;
+  padding:0 2px;
 
-      display:flex;
-
-      flex-direction:column;
-
-      gap:6px;
-
-      overscroll-behavior:contain;
-
-    }
+}
 
 
-    .zeng-message-row {
+.zeng-message-row.mine {
 
-      display:flex;
+  justify-content:flex-end;
 
-      width:100%;
-
-      padding:0 2px;
-
-    }
+}
 
 
-    .zeng-message-row.mine {
+.zeng-message-row.theirs {
 
-      justify-content:flex-end;
+  justify-content:flex-start;
 
-    }
-
-
-    .zeng-message-row.theirs {
-
-      justify-content:flex-start;
-
-    }
+}
 
 
-    .zeng-message {
+.zeng-message {
 
-      max-width:min(82%,520px);
+  max-width:min(82%,520px);
 
-      padding:7px 9px 6px;
+  padding:8px 10px 7px;
 
-      border-radius:15px;
+  border-radius:15px;
 
-      position:relative;
+  position:relative;
 
-      line-height:1.4;
+  line-height:1.4;
 
-    }
+  box-sizing:border-box;
 
+  word-break:break-word;
 
-    .zeng-message.mine {
-
-      background:var(--primary);
-
-      color:white;
-
-      border-bottom-right-radius:5px;
-
-    }
+}
 
 
-    .zeng-message.theirs {
+.zeng-message.mine {
 
-      background:var(--surface-soft);
+  background:var(--primary);
 
-      color:var(--text);
+  color:white;
 
-      border-bottom-left-radius:5px;
+  border-bottom-right-radius:5px;
 
-    }
+}
 
 
-    .zeng-message-content {
+.zeng-message.theirs {
 
-      display:flex;
+  background:var(--surface);
 
-      align-items:flex-end;
+  color:var(--text);
 
-      gap:7px;
+  border:1px solid var(--border);
 
-    }
+  border-bottom-left-radius:5px;
+
+}
+
+
+.zeng-message-content {
+
+  display:flex;
+
+  align-items:flex-end;
+
+  gap:7px;
+
+}
 
 
     .zeng-message-text {

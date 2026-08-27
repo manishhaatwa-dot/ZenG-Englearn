@@ -26,6 +26,7 @@
 //   lastMessage
 //   lastMessageAt
 //   lastSenderId
+//   unreadFor
 //   updatedAt
 //
 // chats/{chatId}/messages/{messageId}
@@ -369,6 +370,8 @@ function ensureChatStyles() {
 
       flex-shrink:0;
 
+      overflow:hidden;
+
     }
 
 
@@ -513,7 +516,10 @@ function ensureChatStyles() {
 
       background:var(--surface);
 
-      box-shadow:var(--shadow, 0 2px 12px rgba(0,0,0,.06));
+      box-shadow:var(
+        --shadow,
+        0 2px 12px rgba(0,0,0,.06)
+      );
 
     }
 
@@ -715,6 +721,8 @@ function ensureChatStyles() {
       margin-left:4px;
 
       opacity:.65;
+
+      color:inherit;
 
     }
 
@@ -955,6 +963,7 @@ function ensureChatStyles() {
         height:calc(100dvh - 40px);
 
       }
+
 
       .zeng-message {
 
@@ -1203,9 +1212,6 @@ function startUsersListener(
 // =========================================================
 // CONVERSATION DATA
 // =========================================================
-//
-// Loads chats in which the current user participates.
-// =========================================================
 
 function startConversationListener(
   onUpdate
@@ -1275,7 +1281,9 @@ function startConversationListener(
 
 
             if (!otherUid) {
+
               return;
+
             }
 
 
@@ -1414,7 +1422,9 @@ function renderUserList(
 
 
   if (!list) {
+
     return;
+
   }
 
 
@@ -1476,6 +1486,7 @@ function renderUserList(
           >
 
             <div class="zeng-user-avatar">
+
               ${
                 user.photoURL
                 ?
@@ -1492,16 +1503,19 @@ function renderUserList(
                 :
                 "👤"
               }
+
             </div>
 
 
             <div class="zeng-user-info">
 
               <div class="zeng-user-name">
+
                 ${escapeHTML(
                   user.displayName ||
                   "Learner"
                 )}
+
               </div>
 
 
@@ -1523,19 +1537,22 @@ function renderUserList(
                 ?
                 `
                   <div class="zeng-user-preview">
-                    ${escapeHTML(
+
+                    ${
                       conversation.lastSenderId ===
                       ChatState.currentUser?.uid
                       ?
                       "You: "
                       :
                       ""
-                    )}
+                    }
+
                     ${escapeHTML(
                       formatPreview(
                         conversation.lastMessage
                       )
                     )}
+
                   </div>
                 `
                 :
@@ -1723,8 +1740,10 @@ function renderChatHome(
 
 
             <div class="zeng-chat-header-text">
+
               Practice English with other learners.
               Select a user to start a conversation.
+
             </div>
 
           </div>
@@ -1883,6 +1902,7 @@ async function openConversation(
 
 
               <div class="zeng-user-avatar">
+
                 ${
                   selectedUser.photoURL
                   ?
@@ -1899,20 +1919,24 @@ async function openConversation(
                   :
                   "👤"
                 }
+
               </div>
 
 
               <div class="zeng-conversation-user">
 
                 <div class="zeng-conversation-name">
+
                   ${escapeHTML(
                     selectedUser.displayName ||
                     "Learner"
                   )}
+
                 </div>
 
 
                 <div class="zeng-conversation-status">
+
                   ${
                     selectedUser.isOnline
                     ?
@@ -1920,6 +1944,7 @@ async function openConversation(
                     :
                     "English learner"
                   }
+
                 </div>
 
               </div>
@@ -2534,9 +2559,11 @@ function renderMessages(
             >
 
               <div class="zeng-message-text">
+
                 ${escapeHTML(
                   message.text
                 )}
+
               </div>
 
 
@@ -2566,7 +2593,8 @@ function renderMessages(
                   mine
                   ?
                   `
-                    <span class="zeng-seen"
+                    <span
+                      class="zeng-seen"
                       title="${
                         message.seen
                         ?
@@ -2950,6 +2978,19 @@ function cancelMessageEdit() {
 // =========================================================
 // SEND MESSAGE
 // =========================================================
+//
+// IMPORTANT:
+//
+// The chat document MUST exist before the first message
+// can be created because Firestore Rules verify the chat
+// participants while creating a message.
+//
+// Order:
+// 1. Create/update chat document.
+// 2. Create message document.
+// 3. Clear composer.
+//
+// =========================================================
 
 async function sendMessage(
   container
@@ -3018,6 +3059,10 @@ async function sendMessage(
   }
 
 
+  // -------------------------------------------------------
+  // EDIT EXISTING MESSAGE
+  // -------------------------------------------------------
+
   if (
     ChatState.editingMessageId
   ) {
@@ -3038,6 +3083,10 @@ async function sendMessage(
       true;
 
 
+    // =====================================================
+    // CHAT REFERENCE
+    // =====================================================
+
     const chatRef =
       doc(
         db,
@@ -3045,6 +3094,10 @@ async function sendMessage(
         chatId
       );
 
+
+    // =====================================================
+    // MESSAGE COLLECTION
+    // =====================================================
 
     const messagesRef =
       collection(
@@ -3054,6 +3107,10 @@ async function sendMessage(
         "messages"
       );
 
+
+    // =====================================================
+    // MESSAGE REFERENCE
+    // =====================================================
 
     const messageRef =
       doc(
@@ -3065,33 +3122,18 @@ async function sendMessage(
       serverTimestamp();
 
 
-    await setDoc(
-      messageRef,
-      {
-
-        senderId:
-          currentUid,
-
-        receiverId:
-          selectedUid,
-
-        text,
-
-        createdAt:
-          now,
-
-        updatedAt:
-          now,
-
-        edited:
-          false,
-
-        seen:
-          false
-
-      }
-    );
-
+    // =====================================================
+    // STEP 1
+    // CREATE / UPDATE CHAT FIRST
+    // =====================================================
+    //
+    // This is the important fix.
+    //
+    // Firestore Rules for messages check the parent chat.
+    // Therefore the chat must already exist before the first
+    // message is written.
+    //
+    // =====================================================
 
     await setDoc(
       chatRef,
@@ -3125,11 +3167,50 @@ async function sendMessage(
     );
 
 
+    // =====================================================
+    // STEP 2
+    // CREATE MESSAGE
+    // =====================================================
+
+    await setDoc(
+      messageRef,
+      {
+
+        senderId:
+          currentUid,
+
+        receiverId:
+          selectedUid,
+
+        text,
+
+        createdAt:
+          now,
+
+        updatedAt:
+          now,
+
+        edited:
+          false,
+
+        seen:
+          false
+
+      }
+    );
+
+
+    // =====================================================
+    // STEP 3
+    // CLEAR INPUT
+    // =====================================================
+
     input.value =
       "";
 
     input.style.height =
       "auto";
+
 
   } catch (error) {
 
@@ -3183,6 +3264,20 @@ async function saveEditedMessage(
     !chatId ||
     !text
   ) {
+
+    return;
+
+  }
+
+
+  if (
+    text.length >
+    MAX_MESSAGE_LENGTH
+  ) {
+
+    alert(
+      `Message cannot be longer than ${MAX_MESSAGE_LENGTH} characters.`
+    );
 
     return;
 

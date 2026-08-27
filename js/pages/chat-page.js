@@ -11,18 +11,19 @@
 // - Send messages
 // - Seen status
 // - Unread red dot
+// - New message alert
 // - Last message preview
+// - Automatic chat ordering
 // - Message editing
 // - Message menu
 // - User blocking
-// - Automatic chat ordering
 //
-// Firestore structure:
+// Firestore:
 //
 // zeng_englearn_users/{uid}
 //
 // chats/{chatId}
-//   participants: [uid1, uid2]
+//   participants
 //   lastMessage
 //   lastMessageAt
 //   lastSenderId
@@ -37,6 +38,7 @@
 //   updatedAt
 //   edited
 //   seen
+//   seenAt
 //
 // =========================================================
 
@@ -56,7 +58,6 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-  deleteDoc,
   serverTimestamp,
   arrayUnion,
   arrayRemove
@@ -108,7 +109,13 @@ const ChatState = {
 
   editingMessageId: null,
 
-  blockedUsers: new Set()
+  blockedUsers:
+    new Set(),
+
+  messagesInitialized: false,
+
+  lastMessageIds:
+    new Set()
 
 };
 
@@ -117,9 +124,13 @@ const ChatState = {
 // ESCAPE HTML
 // =========================================================
 
-function escapeHTML(value) {
+function escapeHTML(
+  value
+) {
 
-  return String(value ?? "")
+  return String(
+    value ?? ""
+  )
 
     .replace(
       /&/g,
@@ -152,9 +163,6 @@ function escapeHTML(value) {
 // =========================================================
 // CHAT ID
 // =========================================================
-//
-// Same two users always receive the same chat ID.
-// =========================================================
 
 function getChatId(
   uid1,
@@ -177,7 +185,8 @@ function getChatId(
 
 function getCurrentUser() {
 
-  return auth.currentUser || null;
+  return auth.currentUser ||
+    null;
 
 }
 
@@ -222,6 +231,13 @@ function cleanupChatListeners() {
       null;
 
   }
+
+
+  ChatState.messagesInitialized =
+    false;
+
+  ChatState.lastMessageIds =
+    new Set();
 
 }
 
@@ -444,15 +460,17 @@ function ensureChatStyles() {
 
     .zeng-unread-dot {
 
-      width:10px;
+      width:11px;
 
-      height:10px;
+      height:11px;
 
       border-radius:50%;
 
       background:#e53935;
 
       display:block;
+
+      box-shadow:0 0 0 3px rgba(229,57,53,.12);
 
     }
 
@@ -516,10 +534,13 @@ function ensureChatStyles() {
 
       background:var(--surface);
 
-      box-shadow:var(
-        --shadow,
-        0 2px 12px rgba(0,0,0,.06)
-      );
+      box-shadow:
+        var(--shadow,
+        0 2px 12px rgba(0,0,0,.06));
+
+      position:relative;
+
+      flex-shrink:0;
 
     }
 
@@ -579,6 +600,138 @@ function ensureChatStyles() {
       font-size:22px;
 
       padding:5px 8px;
+
+    }
+
+
+    .zeng-chat-menu-panel {
+
+      position:absolute;
+
+      right:10px;
+
+      top:58px;
+
+      z-index:20;
+
+      min-width:180px;
+
+      padding:6px;
+
+      border-radius:13px;
+
+      background:var(--surface);
+
+      box-shadow:
+        0 8px 30px rgba(0,0,0,.15);
+
+      display:none;
+
+    }
+
+
+    .zeng-chat-menu-panel.open {
+
+      display:block;
+
+    }
+
+
+    .zeng-chat-menu-item {
+
+      width:100%;
+
+      border:none;
+
+      background:transparent;
+
+      text-align:left;
+
+      padding:11px;
+
+      border-radius:9px;
+
+      cursor:pointer;
+
+      font-size:12px;
+
+      color:var(--text);
+
+    }
+
+
+    .zeng-chat-menu-item:hover {
+
+      background:var(--surface-soft);
+
+    }
+
+
+    .zeng-chat-menu-item.danger {
+
+      color:#d32f2f;
+
+    }
+
+
+    .zeng-new-message-alert {
+
+      display:none;
+
+      margin-top:8px;
+
+      padding:10px 13px;
+
+      border-radius:12px;
+
+      background:var(--surface);
+
+      box-shadow:
+        0 3px 14px rgba(0,0,0,.10);
+
+      cursor:pointer;
+
+      align-items:center;
+
+      gap:9px;
+
+      font-size:12px;
+
+      font-weight:700;
+
+    }
+
+
+    .zeng-new-message-alert.show {
+
+      display:flex;
+
+    }
+
+
+    .zeng-new-message-alert-dot {
+
+      width:10px;
+
+      height:10px;
+
+      border-radius:50%;
+
+      background:#e53935;
+
+      flex-shrink:0;
+
+      box-shadow:
+        0 0 0 4px rgba(229,57,53,.12);
+
+    }
+
+
+    .zeng-new-message-alert-text {
+
+      flex:1;
+
+      min-width:0;
 
     }
 
@@ -737,6 +890,8 @@ function ensureChatStyles() {
 
       align-items:flex-end;
 
+      flex-shrink:0;
+
     }
 
 
@@ -855,25 +1010,6 @@ function ensureChatStyles() {
     }
 
 
-    .zeng-blocked-note {
-
-      padding:12px;
-
-      border-radius:12px;
-
-      background:var(--surface-soft);
-
-      color:var(--text-secondary);
-
-      text-align:center;
-
-      font-size:11px;
-
-      line-height:1.5;
-
-    }
-
-
     .zeng-chat-loading {
 
       padding:30px;
@@ -887,75 +1023,6 @@ function ensureChatStyles() {
     }
 
 
-    .zeng-chat-menu-panel {
-
-      position:absolute;
-
-      right:10px;
-
-      top:58px;
-
-      z-index:20;
-
-      min-width:180px;
-
-      padding:6px;
-
-      border-radius:13px;
-
-      background:var(--surface);
-
-      box-shadow:0 8px 30px rgba(0,0,0,.15);
-
-      display:none;
-
-    }
-
-
-    .zeng-chat-menu-panel.open {
-
-      display:block;
-
-    }
-
-
-    .zeng-chat-menu-item {
-
-      width:100%;
-
-      border:none;
-
-      background:transparent;
-
-      text-align:left;
-
-      padding:11px;
-
-      border-radius:9px;
-
-      cursor:pointer;
-
-      font-size:12px;
-
-      color:var(--text);
-
-    }
-
-
-    .zeng-chat-menu-item:hover {
-
-      background:var(--surface-soft);
-
-    }
-
-
-    .zeng-chat-menu-item.danger {
-
-      color:#d32f2f;
-
-    }
-
-
     @media (max-width:600px) {
 
       .zeng-conversation {
@@ -963,7 +1030,6 @@ function ensureChatStyles() {
         height:calc(100dvh - 40px);
 
       }
-
 
       .zeng-message {
 
@@ -984,7 +1050,7 @@ function ensureChatStyles() {
 
 
 // =========================================================
-// FORMAT LAST MESSAGE
+// FORMAT PREVIEW
 // =========================================================
 
 function formatPreview(
@@ -1029,9 +1095,7 @@ function formatTime(
   timestamp
 ) {
 
-  if (
-    !timestamp
-  ) {
+  if (!timestamp) {
 
     return "";
 
@@ -1136,7 +1200,7 @@ async function loadCurrentProfile() {
 
 
 // =========================================================
-// LOAD USERS
+// USERS LISTENER
 // =========================================================
 
 function startUsersListener(
@@ -1174,8 +1238,12 @@ function startUsersListener(
 
             .map(
               (item) => ({
-                id: item.id,
+
+                id:
+                  item.id,
+
                 ...item.data()
+
               })
             )
 
@@ -1210,7 +1278,7 @@ function startUsersListener(
 
 
 // =========================================================
-// CONVERSATION DATA
+// CONVERSATION LISTENER
 // =========================================================
 
 function startConversationListener(
@@ -1266,18 +1334,22 @@ function startConversationListener(
               chatDoc.data();
 
 
-            const otherUid =
+            const participants =
               Array.isArray(
                 data.participants
               )
                 ?
-                data.participants.find(
-                  (uid) =>
-                    uid !==
-                    currentUid
-                )
+                data.participants
                 :
-                null;
+                [];
+
+
+            const otherUid =
+              participants.find(
+                (uid) =>
+                  uid !==
+                  currentUid
+              );
 
 
             if (!otherUid) {
@@ -1298,7 +1370,9 @@ function startConversationListener(
             }
 
 
-            conversations[otherUid] = {
+            conversations[
+              otherUid
+            ] = {
 
               chatId:
                 chatDoc.id,
@@ -1307,13 +1381,21 @@ function startConversationListener(
                 data.lastMessage || "",
 
               lastMessageAt:
-                data.lastMessageAt || null,
+                data.lastMessageAt ||
+                null,
 
               lastSenderId:
-                data.lastSenderId || "",
+                data.lastSenderId ||
+                "",
 
               unreadFor:
-                data.unreadFor || []
+                Array.isArray(
+                  data.unreadFor
+                )
+                  ?
+                  data.unreadFor
+                  :
+                  []
 
             };
 
@@ -1355,16 +1437,22 @@ function getSortedUsers() {
     (a, b) => {
 
       const conversationA =
-        ChatState.conversations[a.id];
+        ChatState.conversations[
+          a.id
+        ];
+
 
       const conversationB =
-        ChatState.conversations[b.id];
+        ChatState.conversations[
+          b.id
+        ];
 
 
       const timeA =
         conversationA
           ?.lastMessageAt
           ?.toMillis?.() || 0;
+
 
       const timeB =
         conversationB
@@ -1466,6 +1554,7 @@ function renderUserList(
           Array.isArray(
             conversation.unreadFor
           ) &&
+
           conversation.unreadFor.includes(
             ChatState.currentUser?.uid
           );
@@ -1567,10 +1656,12 @@ function renderUserList(
               ${
                 unread
                 ?
-                `<span
-                  class="zeng-unread-dot"
-                  aria-label="Unread message"
-                ></span>`
+                `
+                  <span
+                    class="zeng-unread-dot"
+                    aria-label="Unread message"
+                  ></span>
+                `
                 :
                 ""
               }
@@ -1678,7 +1769,73 @@ async function markConversationRead(
 
 
 // =========================================================
-// RENDER CHAT PAGE
+// SHOW NEW MESSAGE ALERT
+// =========================================================
+
+function showNewMessageAlert(
+  container,
+  selectedUser
+) {
+
+  const alertBox =
+    container.querySelector(
+      "#zengNewMessageAlert"
+    );
+
+
+  const alertText =
+    container.querySelector(
+      "#zengNewMessageAlertText"
+    );
+
+
+  if (
+    !alertBox ||
+    !alertText
+  ) {
+
+    return;
+
+  }
+
+
+  alertText.textContent =
+    `New message from ${
+      selectedUser?.displayName ||
+      "Learner"
+    }`;
+
+
+  alertBox.classList.add(
+    "show"
+  );
+
+}
+
+
+// =========================================================
+// HIDE NEW MESSAGE ALERT
+// =========================================================
+
+function hideNewMessageAlert(
+  container
+) {
+
+  const alertBox =
+    container.querySelector(
+      "#zengNewMessageAlert"
+    );
+
+
+  alertBox?.classList.remove(
+    "show"
+  );
+
+}
+
+
+// =========================================================
+// RENDER CHAT HOME
 // =========================================================
 
 function renderChatHome(
@@ -1693,6 +1850,12 @@ function renderChatHome(
 
   ChatState.editingMessageId =
     null;
+
+  ChatState.messagesInitialized =
+    false;
+
+  ChatState.lastMessageIds =
+    new Set();
 
 
   if (
@@ -1740,10 +1903,8 @@ function renderChatHome(
 
 
             <div class="zeng-chat-header-text">
-
               Practice English with other learners.
               Select a user to start a conversation.
-
             </div>
 
           </div>
@@ -1867,6 +2028,24 @@ async function openConversation(
   ChatState.editingMessageId =
     null;
 
+  ChatState.messagesInitialized =
+    false;
+
+  ChatState.lastMessageIds =
+    new Set();
+
+
+  if (
+    ChatState.unsubscribeMessages
+  ) {
+
+    ChatState.unsubscribeMessages();
+
+    ChatState.unsubscribeMessages =
+      null;
+
+  }
+
 
   container.innerHTML = `
 
@@ -1882,13 +2061,15 @@ async function openConversation(
 
         <div class="zeng-chat-page">
 
-          <div
-            class="zeng-conversation"
-          >
+          <div class="zeng-conversation">
+
+
+            <!-- =========================================
+                 CHAT HEADER
+                 ========================================= -->
 
             <div
               class="zeng-conversation-header"
-              style="position:relative;"
             >
 
               <button
@@ -1925,17 +2106,19 @@ async function openConversation(
 
               <div class="zeng-conversation-user">
 
-                <div class="zeng-conversation-name">
-
+                <div
+                  class="zeng-conversation-name"
+                >
                   ${escapeHTML(
                     selectedUser.displayName ||
                     "Learner"
                   )}
-
                 </div>
 
 
-                <div class="zeng-conversation-status">
+                <div
+                  class="zeng-conversation-status"
+                >
 
                   ${
                     selectedUser.isOnline
@@ -1978,6 +2161,41 @@ async function openConversation(
             </div>
 
 
+            <!-- =========================================
+                 NEW MESSAGE ALERT
+                 ========================================= -->
+
+            <div
+              id="zengNewMessageAlert"
+              class="zeng-new-message-alert"
+              role="button"
+              tabindex="0"
+            >
+
+              <span
+                class="zeng-new-message-alert-dot"
+              ></span>
+
+
+              <span
+                id="zengNewMessageAlertText"
+                class="zeng-new-message-alert-text"
+              >
+                New message
+              </span>
+
+
+              <span>
+                ↓
+              </span>
+
+            </div>
+
+
+            <!-- =========================================
+                 MESSAGES
+                 ========================================= -->
+
             <div
               id="zengMessages"
               class="zeng-messages"
@@ -1989,6 +2207,10 @@ async function openConversation(
 
             </div>
 
+
+            <!-- =========================================
+                 EDIT BAR
+                 ========================================= -->
 
             <div
               id="zengEditBar"
@@ -2010,6 +2232,10 @@ async function openConversation(
 
             </div>
 
+
+            <!-- =========================================
+                 COMPOSER
+                 ========================================= -->
 
             <div
               id="zengComposer"
@@ -2047,9 +2273,9 @@ async function openConversation(
   `;
 
 
-  // -------------------------------------------------------
-  // Back
-  // -------------------------------------------------------
+  // =======================================================
+  // BACK
+  // =======================================================
 
   document
     .getElementById(
@@ -2079,9 +2305,9 @@ async function openConversation(
     );
 
 
-  // -------------------------------------------------------
-  // Menu
-  // -------------------------------------------------------
+  // =======================================================
+  // MENU
+  // =======================================================
 
   const menuButton =
     document.getElementById(
@@ -2101,6 +2327,7 @@ async function openConversation(
 
       event.stopPropagation();
 
+
       menuPanel?.classList.toggle(
         "open"
       );
@@ -2109,9 +2336,9 @@ async function openConversation(
   );
 
 
-  // -------------------------------------------------------
-  // Block
-  // -------------------------------------------------------
+  // =======================================================
+  // BLOCK USER
+  // =======================================================
 
   document
     .getElementById(
@@ -2123,7 +2350,10 @@ async function openConversation(
 
         const confirmed =
           window.confirm(
-            `Block ${selectedUser.displayName || "this user"}?`
+            `Block ${
+              selectedUser.displayName ||
+              "this user"
+            }?`
           );
 
 
@@ -2134,9 +2364,17 @@ async function openConversation(
         }
 
 
-        await blockUser(
-          selectedUser.id
-        );
+        const success =
+          await blockUser(
+            selectedUser.id
+          );
+
+
+        if (!success) {
+
+          return;
+
+        }
 
 
         menuPanel?.classList.remove(
@@ -2164,9 +2402,9 @@ async function openConversation(
     );
 
 
-  // -------------------------------------------------------
-  // Close menu when clicking outside
-  // -------------------------------------------------------
+  // =======================================================
+  // CLOSE MENU
+  // =======================================================
 
   document.addEventListener(
     "click",
@@ -2176,16 +2414,49 @@ async function openConversation(
         "open"
       );
 
-    },
-    {
-      once: true
     }
   );
 
 
-  // -------------------------------------------------------
-  // Input
-  // -------------------------------------------------------
+  // =======================================================
+  // NEW MESSAGE ALERT CLICK
+  // =======================================================
+
+  const newMessageAlert =
+    document.getElementById(
+      "zengNewMessageAlert"
+    );
+
+
+  newMessageAlert?.addEventListener(
+    "click",
+    () => {
+
+      const messages =
+        document.getElementById(
+          "zengMessages"
+        );
+
+
+      if (messages) {
+
+        messages.scrollTop =
+          messages.scrollHeight;
+
+      }
+
+
+      hideNewMessageAlert(
+        container
+      );
+
+    }
+  );
+
+
+  // =======================================================
+  // INPUT
+  // =======================================================
 
   const input =
     document.getElementById(
@@ -2228,6 +2499,7 @@ async function openConversation(
 
         event.preventDefault();
 
+
         sendMessage(
           container
         );
@@ -2264,9 +2536,9 @@ async function openConversation(
     );
 
 
-  // -------------------------------------------------------
-  // Messages listener
-  // -------------------------------------------------------
+  // =======================================================
+  // MESSAGES LISTENER
+  // =======================================================
 
   startMessagesListener(
     container,
@@ -2274,23 +2546,19 @@ async function openConversation(
   );
 
 
-  // -------------------------------------------------------
-  // Mark existing conversation as read
-  // -------------------------------------------------------
-
-  const chatRef =
-    doc(
-      db,
-      CHATS_COLLECTION,
-      ChatState.selectedChatId
-    );
-
+  // =======================================================
+  // MARK EXISTING CHAT AS READ
+  // =======================================================
 
   try {
 
     const chatSnap =
       await getDoc(
-        chatRef
+        doc(
+          db,
+          CHATS_COLLECTION,
+          ChatState.selectedChatId
+        )
       );
 
 
@@ -2307,7 +2575,7 @@ async function openConversation(
   } catch (error) {
 
     console.warn(
-      "Unable to open chat:",
+      "Unable to mark chat as read:",
       error
     );
 
@@ -2358,22 +2626,91 @@ function startMessagesListener(
       messagesQuery,
       async (snapshot) => {
 
+        const messages =
+          snapshot.docs.map(
+            (item) => ({
+
+              id:
+                item.id,
+
+              ...item.data()
+
+            })
+          );
+
+
+        // -------------------------------------------------
+        // Detect newly arrived incoming message.
+        // -------------------------------------------------
+
+        if (
+          ChatState.messagesInitialized
+        ) {
+
+          const newIncoming =
+            snapshot.docChanges()
+              .some(
+                (change) => {
+
+                  if (
+                    change.type !==
+                    "added"
+                  ) {
+
+                    return false;
+
+                  }
+
+
+                  const data =
+                    change.doc.data();
+
+
+                  return (
+                    data.receiverId ===
+                    ChatState.currentUser?.uid
+                  );
+
+                }
+              );
+
+
+          if (
+            newIncoming &&
+            ChatState.selectedUser
+          ) {
+
+            showNewMessageAlert(
+              container,
+              ChatState.selectedUser
+            );
+
+          }
+
+        }
+
+
+        ChatState.lastMessageIds =
+          new Set(
+            messages.map(
+              (message) =>
+                message.id
+            )
+          );
+
+
+        ChatState.messagesInitialized =
+          true;
+
+
         renderMessages(
           container,
-          snapshot.docs
-            .map(
-              (item) => ({
-                id:
-                  item.id,
-
-                ...item.data()
-              })
-            )
+          messages
         );
 
 
         // -------------------------------------------------
-        // Mark incoming messages as seen
+        // Mark incoming messages as seen.
         // -------------------------------------------------
 
         const currentUid =
@@ -2389,10 +2726,14 @@ function startMessagesListener(
 
 
               return (
+
                 data.receiverId ===
-                  currentUid &&
+                currentUid
+
+                &&
 
                 data.seen !== true
+
               );
 
             }
@@ -2559,11 +2900,9 @@ function renderMessages(
             >
 
               <div class="zeng-message-text">
-
                 ${escapeHTML(
                   message.text
                 )}
-
               </div>
 
 
@@ -2572,9 +2911,11 @@ function renderMessages(
                 ${
                   message.edited
                   ?
-                  `<span class="zeng-message-edited">
-                    edited
-                  </span>`
+                  `
+                    <span class="zeng-message-edited">
+                      edited
+                    </span>
+                  `
                   :
                   ""
                 }
@@ -2646,9 +2987,9 @@ function renderMessages(
     ).join("");
 
 
-  // -------------------------------------------------------
-  // Message menu buttons
-  // -------------------------------------------------------
+  // =======================================================
+  // MESSAGE MENU BUTTONS
+  // =======================================================
 
   messagesBox
     .querySelectorAll(
@@ -2680,9 +3021,9 @@ function renderMessages(
     );
 
 
-  // -------------------------------------------------------
-  // Scroll to bottom
-  // -------------------------------------------------------
+  // =======================================================
+  // SCROLL BOTTOM
+  // =======================================================
 
   messagesBox.scrollTop =
     messagesBox.scrollHeight;
@@ -2732,7 +3073,8 @@ function showMessageMenu(
 
     border-radius:12px;
 
-    box-shadow:0 8px 28px rgba(0,0,0,.18);
+    box-shadow:
+      0 8px 28px rgba(0,0,0,.18);
 
     padding:5px;
 
@@ -2905,10 +3247,13 @@ async function beginMessageEdit(
       input.value =
         message.text || "";
 
+
       input.focus();
+
 
       input.style.height =
         "auto";
+
 
       input.style.height =
         Math.min(
@@ -2978,19 +3323,6 @@ function cancelMessageEdit() {
 // =========================================================
 // SEND MESSAGE
 // =========================================================
-//
-// IMPORTANT:
-//
-// The chat document MUST exist before the first message
-// can be created because Firestore Rules verify the chat
-// participants while creating a message.
-//
-// Order:
-// 1. Create/update chat document.
-// 2. Create message document.
-// 3. Clear composer.
-//
-// =========================================================
 
 async function sendMessage(
   container
@@ -3059,9 +3391,9 @@ async function sendMessage(
   }
 
 
-  // -------------------------------------------------------
-  // EDIT EXISTING MESSAGE
-  // -------------------------------------------------------
+  // =======================================================
+  // EDIT MODE
+  // =======================================================
 
   if (
     ChatState.editingMessageId
@@ -3083,10 +3415,6 @@ async function sendMessage(
       true;
 
 
-    // =====================================================
-    // CHAT REFERENCE
-    // =====================================================
-
     const chatRef =
       doc(
         db,
@@ -3094,10 +3422,6 @@ async function sendMessage(
         chatId
       );
 
-
-    // =====================================================
-    // MESSAGE COLLECTION
-    // =====================================================
 
     const messagesRef =
       collection(
@@ -3107,10 +3431,6 @@ async function sendMessage(
         "messages"
       );
 
-
-    // =====================================================
-    // MESSAGE REFERENCE
-    // =====================================================
 
     const messageRef =
       doc(
@@ -3123,17 +3443,13 @@ async function sendMessage(
 
 
     // =====================================================
-    // STEP 1
+    // IMPORTANT:
     // CREATE / UPDATE CHAT FIRST
     // =====================================================
     //
-    // This is the important fix.
+    // Firestore rules require the chat document to exist
+    // before a message can be created.
     //
-    // Firestore Rules for messages check the parent chat.
-    // Therefore the chat must already exist before the first
-    // message is written.
-    //
-    // =====================================================
 
     await setDoc(
       chatRef,
@@ -3168,8 +3484,7 @@ async function sendMessage(
 
 
     // =====================================================
-    // STEP 2
-    // CREATE MESSAGE
+    // CREATE MESSAGE AFTER CHAT
     // =====================================================
 
     await setDoc(
@@ -3201,16 +3516,20 @@ async function sendMessage(
 
 
     // =====================================================
-    // STEP 3
     // CLEAR INPUT
     // =====================================================
 
     input.value =
       "";
 
+
     input.style.height =
       "auto";
 
+
+    hideNewMessageAlert(
+      container
+    );
 
   } catch (error) {
 
@@ -3349,10 +3668,9 @@ async function saveEditedMessage(
     );
 
 
-    // -----------------------------------------------------
-    // Update last message preview only if this is the
-    // latest message.
-    // -----------------------------------------------------
+    // =====================================================
+    // UPDATE CHAT PREVIEW IF THIS IS LATEST MESSAGE
+    // =====================================================
 
     const messagesSnapshot =
       await getDocs(
@@ -3378,7 +3696,7 @@ async function saveEditedMessage(
     if (
       latest &&
       latest.id ===
-        messageId
+      messageId
     ) {
 
       await updateDoc(
@@ -3443,7 +3761,7 @@ async function blockUser(
     !uid
   ) {
 
-    return;
+    return false;
 
   }
 
@@ -3473,13 +3791,12 @@ async function blockUser(
     );
 
 
-    // -----------------------------------------------------
-    // Remove unread state for this user locally.
-    // -----------------------------------------------------
-
     delete ChatState.conversations[
       uid
     ];
+
+
+    return true;
 
   } catch (error) {
 
@@ -3493,6 +3810,9 @@ async function blockUser(
       error?.message ||
       "Unable to block this user."
     );
+
+
+    return false;
 
   }
 

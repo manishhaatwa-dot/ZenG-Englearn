@@ -26,7 +26,16 @@ import {
 
 import {
   renderVocabularyPage
-} from "./pages/vocabulary-page.js";
+} from "./pages/vocabulary-page.js
+
+import {
+  renderStoriesPage
+} from "./pages/stories-page.js";
+
+import {
+  renderChatPage
+} from "./pages/chat-page.js";
+
 
 // =========================================================
 // APP STATE
@@ -391,7 +400,50 @@ if (
 
 }
     
+if (
+  page === "stories"
+) {
 
+  AppState.currentPage =
+    "stories";
+
+
+  renderStoriesPage(
+    appRoot,
+    {
+      displayName:
+        AppState.profile?.displayName ||
+        "Learner"
+    }
+  );
+
+
+  return;
+
+}
+
+  if (
+  page === "chat"
+) {
+
+  AppState.currentPage =
+    "chat";
+
+
+  renderChatPage(
+    appRoot,
+    {
+      displayName:
+        AppState.profile?.displayName ||
+        "Learner"
+    }
+  );
+
+
+  return;
+
+}  
+    
     throw new Error(
       `Page module "${page}-page.js" does not export renderPage().`
     );

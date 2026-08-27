@@ -1,139 +1,132 @@
 // =========================================================
 // ZenG English Learn
-// Chat Page
-// =========================================================
-//
-// Complete user-to-user English chat system.
-//
-// Features:
-// - Chat inbox
-// - Registered learner list
-// - Recent chats first
-// - Real-time conversations
-// - Real-time unread indicator
-// - Send messages
-// - Sent / seen ticks
-// - Message editing
-// - Message menu
-// - User blocking
-// - Clear chat
-// - Firebase message deletion
-// - Stable chat IDs
-// - Dashboard navigation
-//
-// Firestore:
-//
-// zeng_englearn_users/{uid}
-//
-// chats/{chatId}
-//   participants
-//   lastMessage
-//   lastMessageAt
-//   lastSenderId
-//   unreadFor
-//   updatedAt
-//
-// chats/{chatId}/messages/{messageId}
-//   senderId
-//   receiverId
-//   text
-//   createdAt
-//   updatedAt
-//   edited
-//   seen
-//   seenAt
-//
+// Main Application Controller
 // =========================================================
 
 
 // =========================================================
-// FIREBASE
+// CORE SERVICES
 // =========================================================
 
 import {
-  collection,
-  doc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  getDocs,
-  getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  writeBatch,
-  serverTimestamp,
-  arrayUnion,
-  arrayRemove
-} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+  startSessionListener
+} from "./services/session-service.js";
 
 import {
-  db,
-  auth
-} from "./js/firebase-services.js";
+  registerCurrentDevice
+} from "./services/notification-service.js";
+
+import {
+  renderAuthView
+} from "./services/auth-ui-service.js";
 
 
 // =========================================================
-// CONSTANTS
+// APP STATE
 // =========================================================
 
-const USERS_COLLECTION =
-  "zeng_englearn_users";
+const AppState = {
 
-const CHATS_COLLECTION =
-  "chats";
+  initialized: false,
 
-const MESSAGES_SUBCOLLECTION =
-  "messages";
+  loading: true,
 
-const MAX_MESSAGE_LENGTH =
-  2000;
+  user: null,
 
-const FIRESTORE_BATCH_LIMIT =
-  450;
+  profile: null,
 
-
-// =========================================================
-// STATE
-// =========================================================
-
-const ChatState = {
-
-  currentUser: null,
-
-  currentProfile: null,
-
-  selectedUser: null,
-
-  selectedChatId: null,
-
-  users: [],
-
-  conversations: {},
-
-  unsubscribeUsers: null,
-
-  unsubscribeMessages: null,
-
-  unsubscribeConversationList: null,
-
-  editingMessageId: null,
-
-  blockedUsers: new Set(),
-
-  view: "inbox"
+  currentPage: null
 
 };
+
+
+// =========================================================
+// DOM
+// =========================================================
+
+const appRoot =
+  document.getElementById(
+    "app"
+  );
+
+
+// =========================================================
+// SPLASH
+// =========================================================
+
+function hideSplash() {
+
+  const splash =
+    document.getElementById(
+      "appLoading"
+    );
+
+
+  if (!splash) {
+    return;
+  }
+
+
+  splash.style.opacity =
+    "0";
+
+  splash.style.pointerEvents =
+    "none";
+
+
+  setTimeout(() => {
+
+    if (
+      splash &&
+      splash.parentNode
+    ) {
+
+      splash.remove();
+
+    }
+
+  }, 220);
+
+}
+
+
+// =========================================================
+// SHOW SPLASH
+// =========================================================
+
+function showSplash() {
+
+  const splash =
+    document.getElementById(
+      "appLoading"
+    );
+
+
+  if (!splash) {
+    return;
+  }
+
+
+  splash.style.opacity =
+    "1";
+
+  splash.style.pointerEvents =
+    "auto";
+
+}
 
 
 // =========================================================
 // ESCAPE HTML
 // =========================================================
 
-function escapeHTML(value) {
+function escapeHTML(
+  value
+) {
 
-  return String(value ?? "")
+  return String(
+    value ?? ""
+  )
 
     .replace(
       /&/g,
@@ -164,1937 +157,76 @@ function escapeHTML(value) {
 
 
 // =========================================================
-// CURRENT USER
-// =========================================================
-
-function getCurrentUser() {
-
-  return auth.currentUser || null;
-
-}
-
-
-// =========================================================
-// CHAT ID
+// PAGE MODULE LOADER
 // =========================================================
 //
-// Sorting guarantees that both users generate the exact
-// same chat ID and participants order.
+// Page files follow this convention:
+//
+// grammar-page.js
+// vocabulary-page.js
+// stories-page.js
+// chat-page.js
+// profile-page.js
+//
+// Future page files should export:
+//
+// renderPage(container, options)
+//
+// This means app.js does not need to be changed every
+// time a new section is created.
 // =========================================================
 
-function getParticipantIds(
-  uid1,
-  uid2
+async function openPage(
+  page
 ) {
 
-  return [
-    String(uid1),
-    String(uid2)
-  ].sort();
-
-}
-
-
-function getChatId(
-  uid1,
-  uid2
-) {
-
-  return getParticipantIds(
-    uid1,
-    uid2
-  ).join("_");
-
-}
-
-
-// =========================================================
-// CLEANUP LISTENERS
-// =========================================================
-
-function cleanupChatListeners() {
-
-  if (
-    ChatState.unsubscribeUsers
-  ) {
-
-    ChatState.unsubscribeUsers();
-
-    ChatState.unsubscribeUsers =
-      null;
-
+  if (!appRoot) {
+    return;
   }
 
 
-  if (
-    ChatState.unsubscribeMessages
-  ) {
+  // -------------------------------------------------------
+  // Only allow known internal pages.
+  // -------------------------------------------------------
 
-    ChatState.unsubscribeMessages();
+  const allowedPages = [
 
-    ChatState.unsubscribeMessages =
-      null;
+    "grammar",
 
-  }
+    "vocabulary",
 
+    "stories",
 
-  if (
-    ChatState.unsubscribeConversationList
-  ) {
+    "chat",
 
-    ChatState.unsubscribeConversationList();
+    "profile"
 
-    ChatState.unsubscribeConversationList =
-      null;
+  ];
 
-  }
-
-}
-
-
-// =========================================================
-// CLEANUP MESSAGE LISTENER ONLY
-// =========================================================
-
-function cleanupMessageListener() {
 
   if (
-    ChatState.unsubscribeMessages
-  ) {
-
-    ChatState.unsubscribeMessages();
-
-    ChatState.unsubscribeMessages =
-      null;
-
-  }
-
-}
-
-
-// =========================================================
-// ENSURE CHAT STYLES
-// =========================================================
-
-function ensureChatStyles() {
-
-  if (
-    document.getElementById(
-      "zengChatPageStyles"
+    !allowedPages.includes(
+      page
     )
   ) {
-
-    return;
-
-  }
-
-
-  const style =
-    document.createElement(
-      "style"
-    );
-
-
-  style.id =
-    "zengChatPageStyles";
-
-
-  style.textContent = `
-
-    .zeng-chat-page {
-
-      width:min(100%,760px);
-
-      margin:0 auto;
-
-    }
-
-
-    .zeng-chat-back {
-
-      border:none;
-
-      background:transparent;
-
-      color:var(--primary);
-
-      font-size:13px;
-
-      font-weight:750;
-
-      cursor:pointer;
-
-      padding:6px 0;
-
-    }
-
-
-    .zeng-chat-header {
-
-      margin-top:10px;
-
-      padding:20px;
-
-    }
-
-
-    .zeng-chat-header-title {
-
-      font-size:23px;
-
-      font-weight:850;
-
-    }
-
-
-    .zeng-chat-header-text {
-
-      margin-top:6px;
-
-      color:var(--text-secondary);
-
-      font-size:12px;
-
-      line-height:1.5;
-
-    }
-
-
-    .zeng-user-list {
-
-      display:flex;
-
-      flex-direction:column;
-
-      gap:8px;
-
-      margin-top:14px;
-
-    }
-
-
-    .zeng-user-card {
-
-      width:100%;
-
-      border:none;
-
-      text-align:left;
-
-      cursor:pointer;
-
-      padding:13px;
-
-      display:flex;
-
-      align-items:center;
-
-      gap:11px;
-
-      position:relative;
-
-    }
-
-
-    .zeng-user-avatar {
-
-      width:46px;
-
-      height:46px;
-
-      min-width:46px;
-
-      border-radius:50%;
-
-      background:var(--surface-soft);
-
-      display:flex;
-
-      align-items:center;
-
-      justify-content:center;
-
-      font-size:22px;
-
-      overflow:hidden;
-
-    }
-
-
-    .zeng-user-info {
-
-      min-width:0;
-
-      flex:1;
-
-    }
-
-
-    .zeng-user-name-row {
-
-      display:flex;
-
-      align-items:center;
-
-      gap:7px;
-
-      min-width:0;
-
-    }
-
-
-    .zeng-user-name {
-
-      font-size:14px;
-
-      font-weight:800;
-
-      white-space:nowrap;
-
-      overflow:hidden;
-
-      text-overflow:ellipsis;
-
-    }
-
-
-    .zeng-user-status {
-
-      margin-top:3px;
-
-      color:var(--text-secondary);
-
-      font-size:10px;
-
-    }
-
-
-    .zeng-user-preview {
-
-      margin-top:4px;
-
-      color:var(--text-muted);
-
-      font-size:11px;
-
-      white-space:nowrap;
-
-      overflow:hidden;
-
-      text-overflow:ellipsis;
-
-    }
-
-
-    .zeng-user-right {
-
-      display:flex;
-
-      flex-direction:column;
-
-      align-items:flex-end;
-
-      justify-content:center;
-
-      gap:6px;
-
-      flex-shrink:0;
-
-      min-width:38px;
-
-    }
-
-
-    .zeng-user-time {
-
-      color:var(--text-muted);
-
-      font-size:9px;
-
-      white-space:nowrap;
-
-    }
-
-
-    .zeng-unread-dot {
-
-      width:10px;
-
-      height:10px;
-
-      min-width:10px;
-
-      border-radius:50%;
-
-      background:#e53935;
-
-      display:block;
-
-    }
-
-
-    .zeng-online-dot {
-
-      width:7px;
-
-      height:7px;
-
-      border-radius:50%;
-
-      background:#26a269;
-
-      display:inline-block;
-
-      margin-right:4px;
-
-    }
-
-
-    .zeng-chat-empty {
-
-      padding:30px 18px;
-
-      text-align:center;
-
-      color:var(--text-secondary);
-
-      font-size:12px;
-
-      line-height:1.6;
-
-    }
-
-
-    .zeng-conversation {
-
-      display:flex;
-
-      flex-direction:column;
-
-      height:calc(100dvh - 40px);
-
-      min-height:450px;
-
-    }
-
-
-    .zeng-conversation-header {
-
-      padding:11px 10px;
-
-      display:flex;
-
-      align-items:center;
-
-      gap:9px;
-
-      border-radius:16px;
-
-      background:var(--surface);
-
-      box-shadow:var(--shadow, 0 2px 12px rgba(0,0,0,.06));
-
-      position:relative;
-
-      flex-shrink:0;
-
-    }
-
-
-    .zeng-conversation-back {
-
-      border:none;
-
-      background:transparent;
-
-      cursor:pointer;
-
-      font-size:21px;
-
-      padding:5px;
-
-      color:var(--text);
-
-    }
-
-
-    .zeng-conversation-user {
-
-      flex:1;
-
-      min-width:0;
-
-    }
-
-
-    .zeng-conversation-name {
-
-      font-weight:850;
-
-      font-size:15px;
-
-      white-space:nowrap;
-
-      overflow:hidden;
-
-      text-overflow:ellipsis;
-
-    }
-
-
-    .zeng-conversation-status {
-
-      margin-top:2px;
-
-      color:var(--text-secondary);
-
-      font-size:10px;
-
-    }
-
-
-    .zeng-conversation-menu {
-
-      border:none;
-
-      background:transparent;
-
-      cursor:pointer;
-
-      font-size:22px;
-
-      padding:5px 8px;
-
-    }
-
-
-    .zeng-chat-menu-panel {
-
-      position:absolute;
-
-      right:10px;
-
-      top:54px;
-
-      z-index:30;
-
-      min-width:175px;
-
-      padding:6px;
-
-      border-radius:13px;
-
-      background:var(--surface);
-
-      box-shadow:0 8px 30px rgba(0,0,0,.15);
-
-      display:none;
-
-    }
-
-
-    .zeng-chat-menu-panel.open {
-
-      display:block;
-
-    }
-
-
-    .zeng-chat-menu-item {
-
-      width:100%;
-
-      border:none;
-
-      background:transparent;
-
-      text-align:left;
-
-      padding:11px;
-
-      border-radius:9px;
-
-      cursor:pointer;
-
-      font-size:12px;
-
-      color:var(--text);
-
-    }
-
-
-    .zeng-chat-menu-item:hover {
-
-      background:var(--surface-soft);
-
-    }
-
-
-    .zeng-chat-menu-item.danger {
-
-      color:#d32f2f;
-
-    }
-
-
-    .zeng-messages {
-
-      flex:1;
-
-      overflow-y:auto;
-
-      padding:12px 3px 8px;
-
-      display:flex;
-
-      flex-direction:column;
-
-      gap:6px;
-
-      overscroll-behavior:contain;
-
-    }
-
-
-    .zeng-message-row {
-
-      display:flex;
-
-      width:100%;
-
-      padding:0 2px;
-
-    }
-
-
-    .zeng-message-row.mine {
-
-      justify-content:flex-end;
-
-    }
-
-
-    .zeng-message-row.theirs {
-
-      justify-content:flex-start;
-
-    }
-
-
-    .zeng-message {
-
-      max-width:min(82%,520px);
-
-      padding:7px 9px 6px;
-
-      border-radius:15px;
-
-      position:relative;
-
-      line-height:1.4;
-
-    }
-
-
-    .zeng-message.mine {
-
-      background:var(--primary);
-
-      color:white;
-
-      border-bottom-right-radius:5px;
-
-    }
-
-
-    .zeng-message.theirs {
-
-      background:var(--surface-soft);
-
-      color:var(--text);
-
-      border-bottom-left-radius:5px;
-
-    }
-
-
-    .zeng-message-content {
-
-      display:flex;
-
-      align-items:flex-end;
-
-      gap:7px;
-
-    }
-
-
-    .zeng-message-text {
-
-      font-size:13px;
-
-      line-height:1.45;
-
-      white-space:pre-wrap;
-
-      word-break:break-word;
-
-      min-width:0;
-
-    }
-
-
-    .zeng-message-meta {
-
-      display:inline-flex;
-
-      align-items:center;
-
-      gap:4px;
-
-      flex-shrink:0;
-
-      white-space:nowrap;
-
-      font-size:8px;
-
-      opacity:.72;
-
-      line-height:1;
-
-      padding-bottom:1px;
-
-    }
-
-
-    .zeng-seen {
-
-      font-weight:850;
-
-      letter-spacing:-1px;
-
-      font-size:11px;
-
-    }
-
-
-    .zeng-message-edited {
-
-      font-size:8px;
-
-      opacity:.75;
-
-    }
-
-
-    .zeng-message-action {
-
-      border:none;
-
-      background:transparent;
-
-      color:inherit;
-
-      cursor:pointer;
-
-      font-size:14px;
-
-      line-height:1;
-
-      padding:1px;
-
-      opacity:.65;
-
-      flex-shrink:0;
-
-    }
-
-
-    .zeng-message-composer-area {
-
-      flex-shrink:0;
-
-    }
-
-
-    .zeng-message-composer {
-
-      padding:7px 0 2px;
-
-      display:flex;
-
-      gap:7px;
-
-      align-items:flex-end;
-
-    }
-
-
-    .zeng-message-input {
-
-      flex:1;
-
-      min-height:43px;
-
-      max-height:120px;
-
-      resize:none;
-
-      border:1px solid var(--border);
-
-      border-radius:15px;
-
-      padding:11px 12px;
-
-      background:var(--surface);
-
-      color:var(--text);
-
-      font:inherit;
-
-      font-size:13px;
-
-      outline:none;
-
-      line-height:1.35;
-
-    }
-
-
-    .zeng-message-input:focus {
-
-      border-color:var(--primary);
-
-    }
-
-
-    .zeng-send-button {
-
-      width:45px;
-
-      height:43px;
-
-      border:none;
-
-      border-radius:14px;
-
-      background:var(--primary);
-
-      color:white;
-
-      cursor:pointer;
-
-      font-size:18px;
-
-      flex-shrink:0;
-
-    }
-
-
-    .zeng-send-button:disabled {
-
-      opacity:.5;
-
-      cursor:not-allowed;
-
-    }
-
-
-    .zeng-edit-bar {
-
-      display:none;
-
-      padding:7px 10px;
-
-      margin-bottom:2px;
-
-      border-radius:10px;
-
-      background:var(--surface-soft);
-
-      font-size:10px;
-
-      color:var(--text-secondary);
-
-    }
-
-
-    .zeng-edit-bar.active {
-
-      display:flex;
-
-      align-items:center;
-
-      justify-content:space-between;
-
-      gap:8px;
-
-    }
-
-
-    .zeng-edit-cancel {
-
-      border:none;
-
-      background:transparent;
-
-      color:var(--primary);
-
-      cursor:pointer;
-
-      font-weight:700;
-
-      font-size:10px;
-
-    }
-
-
-    .zeng-blocked-note {
-
-      padding:12px;
-
-      border-radius:12px;
-
-      background:var(--surface-soft);
-
-      color:var(--text-secondary);
-
-      text-align:center;
-
-      font-size:11px;
-
-      line-height:1.5;
-
-    }
-
-
-    .zeng-chat-loading {
-
-      padding:30px;
-
-      text-align:center;
-
-      color:var(--text-secondary);
-
-      font-size:12px;
-
-    }
-
-
-    .zeng-inbox-title-row {
-
-      display:flex;
-
-      align-items:center;
-
-      justify-content:space-between;
-
-      gap:10px;
-
-    }
-
-
-    .zeng-inbox-title {
-
-      font-size:18px;
-
-      font-weight:850;
-
-    }
-
-
-    .zeng-inbox-subtitle {
-
-      margin-top:3px;
-
-      color:var(--text-secondary);
-
-      font-size:10px;
-
-    }
-
-
-    .zeng-new-message-badge {
-
-      width:9px;
-
-      height:9px;
-
-      border-radius:50%;
-
-      background:#e53935;
-
-      display:inline-block;
-
-      flex-shrink:0;
-
-    }
-
-
-    @media (max-width:600px) {
-
-      .zeng-conversation {
-
-        height:calc(100dvh - 24px);
-
-      }
-
-      .zeng-message {
-
-        max-width:89%;
-
-      }
-
-      .zeng-message-content {
-
-        gap:6px;
-
-      }
-
-      .zeng-message-text {
-
-        font-size:13px;
-
-      }
-
-    }
-
-  `;
-
-
-  document.head.appendChild(
-    style
-  );
-
-}
-
-
-// =========================================================
-// FORMAT PREVIEW
-// =========================================================
-
-function formatPreview(
-  text
-) {
-
-  if (!text) {
-
-    return "Start a conversation";
-
-  }
-
-
-  const clean =
-    String(text)
-      .replace(/\s+/g, " ")
-      .trim();
-
-
-  if (
-    clean.length > 50
-  ) {
-
-    return (
-      clean.slice(0, 50) +
-      "…"
-    );
-
-  }
-
-
-  return clean;
-
-}
-
-
-// =========================================================
-// FORMAT TIME
-// =========================================================
-
-function getTimestampDate(
-  timestamp
-) {
-
-  if (
-    !timestamp
-  ) {
-
-    return null;
-
-  }
-
-
-  if (
-    typeof timestamp.toDate ===
-    "function"
-  ) {
-
-    return timestamp.toDate();
-
-  }
-
-
-  if (
-    timestamp instanceof Date
-  ) {
-
-    return timestamp;
-
-  }
-
-
-  return null;
-
-}
-
-
-function formatTime(
-  timestamp
-) {
-
-  const date =
-    getTimestampDate(
-      timestamp
-    );
-
-
-  if (!date) {
-
-    return "";
-
-  }
-
-
-  return date.toLocaleTimeString(
-    [],
-    {
-      hour: "numeric",
-      minute: "2-digit"
-    }
-  );
-
-}
-
-
-// =========================================================
-// LOAD CURRENT PROFILE
-// =========================================================
-
-async function loadCurrentProfile() {
-
-  const user =
-    getCurrentUser();
-
-
-  if (!user) {
-
-    return null;
-
-  }
-
-
-  ChatState.currentUser =
-    user;
-
-
-  const profileSnap =
-    await getDoc(
-      doc(
-        db,
-        USERS_COLLECTION,
-        user.uid
-      )
-    );
-
-
-  if (
-    profileSnap.exists()
-  ) {
-
-    ChatState.currentProfile =
-      profileSnap.data();
-
-  } else {
-
-    ChatState.currentProfile =
-      {};
-
-  }
-
-
-  ChatState.blockedUsers =
-    new Set(
-      ChatState.currentProfile
-        ?.blockedUsers || []
-    );
-
-
-  return ChatState.currentProfile;
-
-}
-
-
-// =========================================================
-// START USERS LISTENER
-// =========================================================
-
-function startUsersListener(
-  onUpdate
-) {
-
-  if (
-    ChatState.unsubscribeUsers
-  ) {
-
-    ChatState.unsubscribeUsers();
-
-  }
-
-
-  const usersQuery =
-    query(
-      collection(
-        db,
-        USERS_COLLECTION
-      ),
-      orderBy(
-        "displayNameLower"
-      )
-    );
-
-
-  ChatState.unsubscribeUsers =
-    onSnapshot(
-      usersQuery,
-      (snapshot) => {
-
-        ChatState.users =
-          snapshot.docs
-
-            .map(
-              (item) => ({
-                id:
-                  item.id,
-                ...item.data()
-              })
-            )
-
-            .filter(
-              (user) =>
-                user.id !==
-                ChatState.currentUser?.uid
-            )
-
-            .filter(
-              (user) =>
-                !ChatState.blockedUsers.has(
-                  user.id
-                )
-            );
-
-
-        onUpdate?.();
-
-      },
-      (error) => {
-
-        console.error(
-          "Chat users listener error:",
-          error
-        );
-
-      }
-    );
-
-}
-
-
-// =========================================================
-// START CONVERSATION LISTENER
-// =========================================================
-
-function startConversationListener(
-  onUpdate
-) {
-
-  if (
-    ChatState.unsubscribeConversationList
-  ) {
-
-    ChatState.unsubscribeConversationList();
-
-  }
-
-
-  const currentUid =
-    ChatState.currentUser?.uid;
-
-
-  if (!currentUid) {
-
-    return;
-
-  }
-
-
-  const chatsQuery =
-    query(
-      collection(
-        db,
-        CHATS_COLLECTION
-      ),
-      where(
-        "participants",
-        "array-contains",
-        currentUid
-      )
-    );
-
-
-  ChatState.unsubscribeConversationList =
-    onSnapshot(
-      chatsQuery,
-      (snapshot) => {
-
-        const conversations = {};
-
-
-        snapshot.docs.forEach(
-          (chatDoc) => {
-
-            const data =
-              chatDoc.data();
-
-
-            const participants =
-              Array.isArray(
-                data.participants
-              )
-                ?
-                data.participants
-                :
-                [];
-
-
-            const otherUid =
-              participants.find(
-                (uid) =>
-                  uid !==
-                  currentUid
-              );
-
-
-            if (!otherUid) {
-
-              return;
-
-            }
-
-
-            if (
-              ChatState.blockedUsers.has(
-                otherUid
-              )
-            ) {
-
-              return;
-
-            }
-
-
-            conversations[otherUid] = {
-
-              chatId:
-                chatDoc.id,
-
-              lastMessage:
-                data.lastMessage || "",
-
-              lastMessageAt:
-                data.lastMessageAt || null,
-
-              lastSenderId:
-                data.lastSenderId || "",
-
-              unreadFor:
-                Array.isArray(
-                  data.unreadFor
-                )
-                  ?
-                  data.unreadFor
-                  :
-                  []
-
-            };
-
-          }
-        );
-
-
-        ChatState.conversations =
-          conversations;
-
-
-        onUpdate?.();
-
-      },
-      (error) => {
-
-        console.error(
-          "Chat conversation listener error:",
-          error
-        );
-
-      }
-    );
-
-}
-
-
-// =========================================================
-// GET SORTED INBOX USERS
-// =========================================================
-
-function getSortedInboxUsers() {
-
-  const users =
-    [...ChatState.users];
-
-
-  users.sort(
-    (a, b) => {
-
-      const conversationA =
-        ChatState.conversations[
-          a.id
-        ];
-
-
-      const conversationB =
-        ChatState.conversations[
-          b.id
-        ];
-
-
-      const timeA =
-        conversationA
-          ?.lastMessageAt
-          ?.toMillis?.() || 0;
-
-
-      const timeB =
-        conversationB
-          ?.lastMessageAt
-          ?.toMillis?.() || 0;
-
-
-      // Existing conversations with recent activity
-      // always come first.
-      if (
-        timeA !==
-        timeB
-      ) {
-
-        return timeB - timeA;
-
-      }
-
-
-      return String(
-        a.displayNameLower ||
-        a.displayName ||
-        ""
-      ).localeCompare(
-        String(
-          b.displayNameLower ||
-          b.displayName ||
-          ""
-        )
-      );
-
-    }
-  );
-
-
-  return users;
-
-}
-
-
-// =========================================================
-// RENDER INBOX
-// =========================================================
-
-function renderInbox(
-  container
-) {
-
-  const list =
-    container.querySelector(
-      "#zengUserList"
-    );
-
-
-  if (!list) {
-
-    return;
-
-  }
-
-
-  const users =
-    getSortedInboxUsers();
-
-
-  if (
-    users.length === 0
-  ) {
-
-    list.innerHTML = `
-
-      <div class="card zeng-chat-empty">
-
-        No other learners are available yet.
-
-        <br>
-
-        Create another account to start
-        practicing English together.
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  list.innerHTML =
-    users.map(
-      (user) => {
-
-        const conversation =
-          ChatState.conversations[
-            user.id
-          ] || {};
-
-
-        const unread =
-          Array.isArray(
-            conversation.unreadFor
-          ) &&
-          conversation.unreadFor.includes(
-            ChatState.currentUser?.uid
-          );
-
-
-        const online =
-          Boolean(
-            user.isOnline
-          );
-
-
-        const conversationTime =
-          formatTime(
-            conversation.lastMessageAt
-          );
-
-
-        const preview =
-          conversation.lastMessage
-            ?
-            (
-              conversation.lastSenderId ===
-              ChatState.currentUser?.uid
-                ?
-                `You: ${formatPreview(
-                  conversation.lastMessage
-                )}`
-                :
-                formatPreview(
-                  conversation.lastMessage
-                )
-            )
-            :
-            "Start a conversation";
-
-
-        return `
-
-          <button
-            type="button"
-            class="card zeng-user-card"
-            data-chat-user="${escapeHTML(user.id)}"
-          >
-
-            <div class="zeng-user-avatar">
-
-              ${
-                user.photoURL
-                ?
-                `<img
-                  src="${escapeHTML(user.photoURL)}"
-                  alt=""
-                  style="
-                    width:100%;
-                    height:100%;
-                    object-fit:cover;
-                  "
-                >`
-                :
-                "👤"
-              }
-
-            </div>
-
-
-            <div class="zeng-user-info">
-
-              <div class="zeng-user-name-row">
-
-                <div class="zeng-user-name">
-                  ${escapeHTML(
-                    user.displayName ||
-                    "Learner"
-                  )}
-                </div>
-
-                ${
-                  unread
-                  ?
-                  `<span
-                    class="zeng-new-message-badge"
-                    aria-label="New message"
-                  ></span>`
-                  :
-                  ""
-                }
-
-              </div>
-
-
-              <div class="zeng-user-status">
-
-                ${
-                  online
-                  ?
-                  `<span class="zeng-online-dot"></span>Online`
-                  :
-                  "English learner"
-                }
-
-              </div>
-
-
-              <div class="zeng-user-preview">
-
-                ${escapeHTML(
-                  preview
-                )}
-
-              </div>
-
-            </div>
-
-
-            <div class="zeng-user-right">
-
-              ${
-                conversationTime
-                ?
-                `<div class="zeng-user-time">
-                  ${escapeHTML(
-                    conversationTime
-                  )}
-                </div>`
-                :
-                ""
-              }
-
-
-              ${
-                unread
-                ?
-                `<span
-                  class="zeng-unread-dot"
-                  aria-label="Unread message"
-                ></span>`
-                :
-                ""
-              }
-
-            </div>
-
-          </button>
-
-        `;
-
-      }
-    ).join("");
-
-
-  list
-    .querySelectorAll(
-      "[data-chat-user]"
-    )
-    .forEach(
-      (button) => {
-
-        button.addEventListener(
-          "click",
-          () => {
-
-            const uid =
-              button.dataset.chatUser;
-
-
-            const user =
-              ChatState.users.find(
-                (item) =>
-                  item.id === uid
-              );
-
-
-            if (user) {
-
-              openConversation(
-                container,
-                user
-              );
-
-            }
-
-          }
-        );
-
-      }
-    );
-
-}
-
-
-// =========================================================
-// MARK CONVERSATION READ
-// =========================================================
-
-async function markConversationRead(
-  chatId
-) {
-
-  const currentUid =
-    ChatState.currentUser?.uid;
-
-
-  if (
-    !chatId ||
-    !currentUid
-  ) {
-
-    return;
-
-  }
-
-
-  try {
-
-    await updateDoc(
-      doc(
-        db,
-        CHATS_COLLECTION,
-        chatId
-      ),
-      {
-
-        unreadFor:
-          arrayRemove(
-            currentUid
-          )
-
-      }
-    );
-
-  } catch (error) {
 
     console.warn(
-      "Unable to mark chat as read:",
-      error
+      "Unknown ZenG page:",
+      page
     );
+
+    return;
 
   }
 
-}
 
-
-// =========================================================
-// RENDER CHAT HOME / INBOX
-// =========================================================
-
-function renderChatHome(
-  container
-) {
-
-  ChatState.view =
-    "inbox";
-
-  ChatState.selectedUser =
-    null;
-
-  ChatState.selectedChatId =
-    null;
-
-  ChatState.editingMessageId =
-    null;
-
-
-  cleanupMessageListener();
-
-
-  container.innerHTML = `
-
-    <div class="page">
-
-      <div
-        class="page-container"
-        style="
-          min-height:100dvh;
-          padding:20px 16px 32px;
-        "
-      >
-
-        <div class="zeng-chat-page">
-
-
-          <button
-            type="button"
-            class="zeng-chat-back"
-            id="zengChatBack"
-          >
-            ← Back to Dashboard
-          </button>
-
-
-          <div
-            class="card zeng-chat-header"
-          >
-
-            <div class="zeng-inbox-title-row">
-
-              <div>
-
-                <div class="zeng-inbox-title">
-                  💬 Messages
-                </div>
-
-                <div class="zeng-inbox-subtitle">
-                  Practice English with other learners.
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div
-            style="
-              margin-top:20px;
-              font-size:18px;
-              font-weight:800;
-            "
-          >
-            Conversations
-          </div>
-
-
-          <div
-            id="zengUserList"
-            class="zeng-user-list"
-          >
-
-            <div class="zeng-chat-loading">
-              Loading learners...
-            </div>
-
-          </div>
-
-
-        </div>
-
-      </div>
-
-    </div>
-
-  `;
-
-
-  document
-    .getElementById(
-      "zengChatBack"
-    )
-    ?.addEventListener(
-      "click",
-      () => {
-
-        cleanupChatListeners();
-
-        window.dispatchEvent(
-          new CustomEvent(
-            "zeng:navigate",
-            {
-              detail: {
-                page:
-                  "dashboard"
-              }
-            }
-          )
-        );
-
-      }
-    );
-
-
-  startUsersListener(
-    () => {
-
-      renderInbox(
-        container
-      );
-
-    }
-  );
-
-
-  startConversationListener(
-    () => {
-
-      renderInbox(
-        container
-      );
-
-    }
-  );
-
-}
-
-
-// =========================================================
-// OPEN CONVERSATION
-// =========================================================
-
-async function openConversation(
-  container,
-  selectedUser
-) {
-
-  const currentUid =
-    ChatState.currentUser?.uid;
-
+  // -------------------------------------------------------
+  // User must be authenticated.
+  // -------------------------------------------------------
 
   if (
-    !currentUid ||
-    !selectedUser?.id
+    !AppState.user ||
+    !AppState.profile
   ) {
 
     return;
@@ -2102,2016 +234,18 @@ async function openConversation(
   }
 
 
-  cleanupMessageListener();
-
-
-  ChatState.view =
-    "conversation";
-
-  ChatState.selectedUser =
-    selectedUser;
-
-  ChatState.selectedChatId =
-    getChatId(
-      currentUid,
-      selectedUser.id
-    );
-
-  ChatState.editingMessageId =
-    null;
-
-
-  const chatId =
-    ChatState.selectedChatId;
-
-
-  container.innerHTML = `
-
-    <div class="page">
-
-      <div
-        class="page-container"
-        style="
-          min-height:100dvh;
-          padding:12px 10px 18px;
-        "
-      >
-
-        <div class="zeng-chat-page">
-
-          <div class="zeng-conversation">
-
-
-            <!-- =========================================
-                 HEADER
-                 ========================================= -->
-
-            <div
-              class="zeng-conversation-header"
-            >
-
-              <button
-                type="button"
-                class="zeng-conversation-back"
-                id="zengConversationBack"
-                aria-label="Back to messages"
-              >
-                ←
-              </button>
-
-
-              <div class="zeng-user-avatar">
-
-                ${
-                  selectedUser.photoURL
-                  ?
-                  `<img
-                    src="${escapeHTML(
-                      selectedUser.photoURL
-                    )}"
-                    alt=""
-                    style="
-                      width:100%;
-                      height:100%;
-                      object-fit:cover;
-                    "
-                  >`
-                  :
-                  "👤"
-                }
-
-              </div>
-
-
-              <div class="zeng-conversation-user">
-
-                <div class="zeng-conversation-name">
-                  ${escapeHTML(
-                    selectedUser.displayName ||
-                    "Learner"
-                  )}
-                </div>
-
-
-                <div class="zeng-conversation-status">
-
-                  ${
-                    selectedUser.isOnline
-                    ?
-                    "Online"
-                    :
-                    "English learner"
-                  }
-
-                </div>
-
-              </div>
-
-
-              <button
-                type="button"
-                class="zeng-conversation-menu"
-                id="zengConversationMenu"
-                aria-label="Chat menu"
-              >
-                ⋮
-              </button>
-
-
-              <div
-                class="zeng-chat-menu-panel"
-                id="zengChatMenuPanel"
-              >
-
-                <button
-                  type="button"
-                  class="zeng-chat-menu-item"
-                  id="zengClearChatButton"
-                >
-                  🗑️ Clear chat
-                </button>
-
-
-                <button
-                  type="button"
-                  class="zeng-chat-menu-item danger"
-                  id="zengBlockUserButton"
-                >
-                  🚫 Block user
-                </button>
-
-              </div>
-
-            </div>
-
-
-            <!-- =========================================
-                 MESSAGES
-                 ========================================= -->
-
-            <div
-              id="zengMessages"
-              class="zeng-messages"
-            >
-
-              <div class="zeng-chat-loading">
-                Loading messages...
-              </div>
-
-            </div>
-
-
-            <!-- =========================================
-                 COMPOSER
-                 ========================================= -->
-
-            <div class="zeng-message-composer-area">
-
-              <div
-                id="zengEditBar"
-                class="zeng-edit-bar"
-              >
-
-                <span>
-                  ✏️ Editing message
-                </span>
-
-
-                <button
-                  type="button"
-                  class="zeng-edit-cancel"
-                  id="zengCancelEdit"
-                >
-                  Cancel
-                </button>
-
-              </div>
-
-
-              <div
-                id="zengComposer"
-                class="zeng-message-composer"
-              >
-
-                <textarea
-                  id="zengMessageInput"
-                  class="zeng-message-input"
-                  maxlength="${MAX_MESSAGE_LENGTH}"
-                  rows="1"
-                  placeholder="Write a message..."
-                ></textarea>
-
-
-                <button
-                  type="button"
-                  id="zengSendButton"
-                  class="zeng-send-button"
-                  aria-label="Send message"
-                >
-                  ➤
-                </button>
-
-              </div>
-
-            </div>
-
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  `;
-
-
-  // =====================================================
-  // BACK TO INBOX
-  // =====================================================
-
-  document
-    .getElementById(
-      "zengConversationBack"
-    )
-    ?.addEventListener(
-      "click",
-      () => {
-
-        cleanupMessageListener();
-
-        renderChatHome(
-          container
-        );
-
-      }
-    );
-
-
-  // =====================================================
-  // CHAT MENU
-  // =====================================================
-
-  const menuButton =
-    document.getElementById(
-      "zengConversationMenu"
-    );
-
-
-  const menuPanel =
-    document.getElementById(
-      "zengChatMenuPanel"
-    );
-
-
-  menuButton?.addEventListener(
-    "click",
-    (event) => {
-
-      event.stopPropagation();
-
-      menuPanel?.classList.toggle(
-        "open"
-      );
-
-    }
-  );
-
-
-  // =====================================================
-  // CLEAR CHAT
-  // =====================================================
-
-  document
-    .getElementById(
-      "zengClearChatButton"
-    )
-    ?.addEventListener(
-      "click",
-      async () => {
-
-        menuPanel?.classList.remove(
-          "open"
-        );
-
-
-        const confirmed =
-          window.confirm(
-            "Clear all messages from this chat? This will permanently delete the messages from Firebase."
-          );
-
-
-        if (!confirmed) {
-
-          return;
-
-        }
-
-
-        const button =
-          document.getElementById(
-            "zengClearChatButton"
-          );
-
-
-        if (button) {
-
-          button.disabled =
-            true;
-
-          button.textContent =
-            "Clearing...";
-
-        }
-
-
-        try {
-
-          await clearChat(
-            chatId
-          );
-
-
-          ChatState.conversations[
-            selectedUser.id
-          ] = undefined;
-
-
-          cleanupMessageListener();
-
-
-          renderChatHome(
-            container
-          );
-
-
-        } catch (error) {
-
-          console.error(
-            "Clear chat error:",
-            error
-          );
-
-
-          alert(
-            error?.message ||
-            "Unable to clear chat."
-          );
-
-
-          if (button) {
-
-            button.disabled =
-              false;
-
-            button.textContent =
-              "🗑️ Clear chat";
-
-          }
-
-        }
-
-      }
-    );
-
-
-  // =====================================================
-  // BLOCK USER
-  // =====================================================
-
-  document
-    .getElementById(
-      "zengBlockUserButton"
-    )
-    ?.addEventListener(
-      "click",
-      async () => {
-
-        menuPanel?.classList.remove(
-          "open"
-        );
-
-
-        const confirmed =
-          window.confirm(
-            `Block ${selectedUser.displayName || "this user"}?`
-          );
-
-
-        if (!confirmed) {
-
-          return;
-
-        }
-
-
-        try {
-
-          await blockUser(
-            selectedUser.id
-          );
-
-
-          cleanupMessageListener();
-
-
-          renderChatHome(
-            container
-          );
-
-
-        } catch (error) {
-
-          console.error(
-            "Block user error:",
-            error
-          );
-
-        }
-
-      }
-    );
-
-
-  // =====================================================
-  // CLOSE MENU OUTSIDE
-  // =====================================================
-
-  const outsideMenuHandler =
-    (event) => {
-
-      if (
-        menuPanel &&
-        !menuPanel.contains(
-          event.target
-        ) &&
-        !menuButton?.contains(
-          event.target
-        )
-      ) {
-
-        menuPanel.classList.remove(
-          "open"
-        );
-
-      }
-
-    };
-
-
-  document.addEventListener(
-    "click",
-    outsideMenuHandler
-  );
-
-
-  // =====================================================
-  // MESSAGE INPUT
-  // =====================================================
-
-  const input =
-    document.getElementById(
-      "zengMessageInput"
-    );
-
-
-  const sendButton =
-    document.getElementById(
-      "zengSendButton"
-    );
-
-
-  input?.addEventListener(
-    "input",
-    () => {
-
-      input.style.height =
-        "auto";
-
-
-      input.style.height =
-        Math.min(
-          input.scrollHeight,
-          120
-        ) + "px";
-
-    }
-  );
-
-
-  input?.addEventListener(
-    "keydown",
-    (event) => {
-
-      if (
-        event.key === "Enter" &&
-        !event.shiftKey
-      ) {
-
-        event.preventDefault();
-
-        sendMessage(
-          container
-        );
-
-      }
-
-    }
-  );
-
-
-  sendButton?.addEventListener(
-    "click",
-    () => {
-
-      sendMessage(
-        container
-      );
-
-    }
-  );
-
-
-  document
-    .getElementById(
-      "zengCancelEdit"
-    )
-    ?.addEventListener(
-      "click",
-      () => {
-
-        cancelMessageEdit();
-
-      }
-    );
-
-
-  // =====================================================
-  // MESSAGE LISTENER
-  // =====================================================
-
-  startMessagesListener(
-    container,
-    chatId
-  );
-
-
-  // =====================================================
-  // MARK CURRENT CHAT READ
-  // =====================================================
-
-  try {
-
-    const chatSnap =
-      await getDoc(
-        doc(
-          db,
-          CHATS_COLLECTION,
-          chatId
-        )
-      );
-
-
-    if (
-      chatSnap.exists()
-    ) {
-
-      await markConversationRead(
-        chatId
-      );
-
-    }
-
-  } catch (error) {
-
-    console.warn(
-      "Unable to mark chat read:",
-      error
-    );
-
-  }
-
-}
-
-
-// =========================================================
-// START MESSAGE LISTENER
-// =========================================================
-
-function startMessagesListener(
-  container,
-  chatId
-) {
-
-  cleanupMessageListener();
-
-
-  const messagesRef =
-    collection(
-      db,
-      CHATS_COLLECTION,
-      chatId,
-      MESSAGES_SUBCOLLECTION
-    );
-
-
-  const messagesQuery =
-    query(
-      messagesRef,
-      orderBy(
-        "createdAt",
-        "asc"
-      )
-    );
-
-
-  ChatState.unsubscribeMessages =
-    onSnapshot(
-      messagesQuery,
-      async (snapshot) => {
-
-        const messages =
-          snapshot.docs.map(
-            (item) => ({
-
-              id:
-                item.id,
-
-              ...item.data()
-
-            })
-          );
-
-
-        renderMessages(
-          container,
-          messages
-        );
-
-
-        // ---------------------------------------------
-        // Mark incoming messages as seen
-        // ---------------------------------------------
-
-        const currentUid =
-          ChatState.currentUser?.uid;
-
-
-        const unseenIncoming =
-          snapshot.docs.filter(
-            (messageDoc) => {
-
-              const data =
-                messageDoc.data();
-
-
-              return (
-
-                data.receiverId ===
-                currentUid
-
-                &&
-
-                data.seen !== true
-
-              );
-
-            }
-          );
-
-
-        for (
-          const messageDoc
-          of unseenIncoming
-        ) {
-
-          try {
-
-            await updateDoc(
-              messageDoc.ref,
-              {
-
-                seen:
-                  true,
-
-                seenAt:
-                  serverTimestamp()
-
-              }
-            );
-
-          } catch (error) {
-
-            console.warn(
-              "Unable to mark message seen:",
-              error
-            );
-
-          }
-
-        }
-
-
-        await markConversationRead(
-          chatId
-        );
-
-      },
-      (error) => {
-
-        console.error(
-          "Messages listener error:",
-          error
-        );
-
-
-        const messages =
-          container.querySelector(
-            "#zengMessages"
-          );
-
-
-        if (messages) {
-
-          messages.innerHTML = `
-
-            <div class="zeng-chat-empty">
-
-              Unable to load messages.
-
-              <br>
-
-              Please check your connection
-              and Firestore permissions.
-
-            </div>
-
-          `;
-
-        }
-
-      }
-    );
-
-}
-
-
-// =========================================================
-// RENDER MESSAGES
-// =========================================================
-
-function renderMessages(
-  container,
-  messages
-) {
-
-  const messagesBox =
-    container.querySelector(
-      "#zengMessages"
-    );
-
-
-  if (!messagesBox) {
-
-    return;
-
-  }
-
-
-  if (
-    messages.length === 0
-  ) {
-
-    messagesBox.innerHTML = `
-
-      <div
-        class="zeng-chat-empty"
-        style="margin:auto;"
-      >
-
-        👋 Start the conversation.
-
-        <br>
-
-        Practice your English naturally.
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  const currentUid =
-    ChatState.currentUser?.uid;
-
-
-  messagesBox.innerHTML =
-    messages.map(
-      (message) => {
-
-        const mine =
-          message.senderId ===
-          currentUid;
-
-
-        return `
-
-          <div
-            class="zeng-message-row ${
-              mine
-              ?
-              "mine"
-              :
-              "theirs"
-            }"
-          >
-
-            <div
-              class="zeng-message ${
-                mine
-                ?
-                "mine"
-                :
-                "theirs"
-              }"
-            >
-
-              <div class="zeng-message-content">
-
-                <div class="zeng-message-text">
-                  ${escapeHTML(
-                    message.text
-                  )}
-                </div>
-
-
-                <div class="zeng-message-meta">
-
-                  ${
-                    message.edited
-                    ?
-                    `<span class="zeng-message-edited">
-                      edited
-                    </span>`
-                    :
-                    ""
-                  }
-
-
-                  <span>
-                    ${escapeHTML(
-                      formatTime(
-                        message.createdAt
-                      )
-                    )}
-                  </span>
-
-
-                  ${
-                    mine
-                    ?
-                    `
-                      <span
-                        class="zeng-seen"
-                        title="${
-                          message.seen
-                          ?
-                          "Seen"
-                          :
-                          "Sent"
-                        }"
-                      >
-                        ${
-                          message.seen
-                          ?
-                          "✓✓"
-                          :
-                          "✓"
-                        }
-                      </span>
-                    `
-                    :
-                    ""
-                  }
-
-
-                  ${
-                    mine
-                    ?
-                    `
-                      <button
-                        type="button"
-                        class="zeng-message-action"
-                        data-message-menu="${escapeHTML(
-                          message.id
-                        )}"
-                        aria-label="Message menu"
-                      >
-                        ⋮
-                      </button>
-                    `
-                    :
-                    ""
-                  }
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        `;
-
-      }
-    ).join("");
-
-
-  // =====================================================
-  // MESSAGE MENU
-  // =====================================================
-
-  messagesBox
-    .querySelectorAll(
-      "[data-message-menu]"
-    )
-    .forEach(
-      (button) => {
-
-        button.addEventListener(
-          "click",
-          (event) => {
-
-            event.stopPropagation();
-
-
-            const messageId =
-              button.dataset.messageMenu;
-
-
-            showMessageMenu(
-              container,
-              messageId
-            );
-
-          }
-        );
-
-      }
-    );
-
-
-  // =====================================================
-  // SCROLL
-  // =====================================================
-
-  messagesBox.scrollTop =
-    messagesBox.scrollHeight;
-
-}
-
-
-// =========================================================
-// MESSAGE MENU
-// =========================================================
-
-function showMessageMenu(
-  container,
-  messageId
-) {
-
-  document
-    .getElementById(
-      "zengMessageActionPopup"
-    )
-    ?.remove();
-
-
-  const popup =
-    document.createElement(
-      "div"
-    );
-
-
-  popup.id =
-    "zengMessageActionPopup";
-
-
-  popup.style.cssText = `
-
-    position:fixed;
-
-    right:18px;
-
-    bottom:82px;
-
-    z-index:100;
-
-    background:var(--surface);
-
-    border-radius:12px;
-
-    box-shadow:0 8px 28px rgba(0,0,0,.18);
-
-    padding:5px;
-
-    min-width:150px;
-
-  `;
-
-
-  popup.innerHTML = `
-
-    <button
-      type="button"
-      data-action="edit"
-      style="
-        width:100%;
-        border:none;
-        background:transparent;
-        text-align:left;
-        padding:11px;
-        cursor:pointer;
-        border-radius:8px;
-        font-size:12px;
-      "
-    >
-      ✏️ Edit message
-    </button>
-
-  `;
-
-
-  document.body.appendChild(
-    popup
-  );
-
-
-  popup
-    .querySelector(
-      "[data-action='edit']"
-    )
-    ?.addEventListener(
-      "click",
-      async () => {
-
-        popup.remove();
-
-
-        await beginMessageEdit(
-          container,
-          messageId
-        );
-
-      }
-    );
-
-
-  const closePopup =
-    (event) => {
-
-      if (
-        !popup.contains(
-          event.target
-        )
-      ) {
-
-        popup.remove();
-
-        document.removeEventListener(
-          "click",
-          closePopup
-        );
-
-      }
-
-    };
-
-
-  setTimeout(
-    () => {
-
-      document.addEventListener(
-        "click",
-        closePopup
-      );
-
-    },
-    0
-  );
-
-}
-
-
-// =========================================================
-// BEGIN MESSAGE EDIT
-// =========================================================
-
-async function beginMessageEdit(
-  container,
-  messageId
-) {
-
-  const chatId =
-    ChatState.selectedChatId;
-
-
-  if (
-    !chatId ||
-    !messageId
-  ) {
-
-    return;
-
-  }
+  AppState.currentPage =
+    page;
 
 
   try {
 
-    const messageSnap =
-      await getDoc(
-        doc(
-          db,
-          CHATS_COLLECTION,
-          chatId,
-          MESSAGES_SUBCOLLECTION,
-          messageId
-        )
-      );
-
-
-    if (
-      !messageSnap.exists()
-    ) {
-
-      return;
-
-    }
-
-
-    const message =
-      messageSnap.data();
-
-
-    if (
-      message.senderId !==
-      ChatState.currentUser?.uid
-    ) {
-
-      return;
-
-    }
-
-
-    ChatState.editingMessageId =
-      messageId;
-
-
-    const input =
-      document.getElementById(
-        "zengMessageInput"
-      );
-
-
-    const editBar =
-      document.getElementById(
-        "zengEditBar"
-      );
-
-
-    if (input) {
-
-      input.value =
-        message.text || "";
-
-      input.focus();
-
-      input.style.height =
-        "auto";
-
-      input.style.height =
-        Math.min(
-          input.scrollHeight,
-          120
-        ) + "px";
-
-    }
-
-
-    editBar?.classList.add(
-      "active"
-    );
-
-  } catch (error) {
-
-    console.error(
-      "Unable to edit message:",
-      error
-    );
-
-  }
-
-}
-
-
-// =========================================================
-// CANCEL EDIT
-// =========================================================
-
-function cancelMessageEdit() {
-
-  ChatState.editingMessageId =
-    null;
-
-
-  const input =
-    document.getElementById(
-      "zengMessageInput"
-    );
-
-
-  const editBar =
-    document.getElementById(
-      "zengEditBar"
-    );
-
-
-  if (input) {
-
-    input.value =
-      "";
-
-    input.style.height =
-      "auto";
-
-  }
-
-
-  editBar?.classList.remove(
-    "active"
-  );
-
-}
-
-
-// =========================================================
-// ENSURE CHAT DOCUMENT
-// =========================================================
-//
-// IMPORTANT:
-//
-// The chat document is created BEFORE the message.
-//
-// This prevents the permission problem that happened
-// previously when the message was created first.
-// =========================================================
-
-async function ensureChatDocument(
-  chatId,
-  currentUid,
-  selectedUid
-) {
-
-  const chatRef =
-    doc(
-      db,
-      CHATS_COLLECTION,
-      chatId
-    );
-
-
-  const participants =
-    getParticipantIds(
-      currentUid,
-      selectedUid
-    );
-
-
-  const chatSnap =
-    await getDoc(
-      chatRef
-    );
-
-
-  if (
-    chatSnap.exists()
-  ) {
-
-    const existing =
-      chatSnap.data();
-
-
-    if (
-      !Array.isArray(
-        existing.participants
-      )
-      ||
-      existing.participants.length !==
-        2
-    ) {
-
-      throw new Error(
-        "This chat has invalid participant data."
-      );
-
-    }
-
-
-    return chatRef;
-
-  }
-
-
-  await setDoc(
-    chatRef,
-    {
-
-      participants,
-
-      lastMessage:
-        "",
-
-      lastMessageAt:
-        null,
-
-      lastSenderId:
-        "",
-
-      unreadFor:
-        [],
-
-      updatedAt:
-        serverTimestamp()
-
-    }
-  );
-
-
-  return chatRef;
-
-}
-
-
-// =========================================================
-// SEND MESSAGE
-// =========================================================
-
-async function sendMessage(
-  container
-) {
-
-  const input =
-    document.getElementById(
-      "zengMessageInput"
-    );
-
-
-  const sendButton =
-    document.getElementById(
-      "zengSendButton"
-    );
-
-
-  const text =
-    String(
-      input?.value || ""
-    )
-      .trim();
-
-
-  if (!text) {
-
-    return;
-
-  }
-
-
-  if (
-    text.length >
-    MAX_MESSAGE_LENGTH
-  ) {
-
-    alert(
-      `Message cannot be longer than ${MAX_MESSAGE_LENGTH} characters.`
-    );
-
-    return;
-
-  }
-
-
-  const currentUid =
-    ChatState.currentUser?.uid;
-
-
-  const selectedUid =
-    ChatState.selectedUser?.id;
-
-
-  const chatId =
-    ChatState.selectedChatId;
-
-
-  if (
-    !currentUid ||
-    !selectedUid ||
-    !chatId
-  ) {
-
-    return;
-
-  }
-
-
-  // =====================================================
-  // EDIT
-  // =====================================================
-
-  if (
-    ChatState.editingMessageId
-  ) {
-
-    await saveEditedMessage(
-      input,
-      sendButton
-    );
-
-    return;
-
-  }
-
-
-  try {
-
-    sendButton.disabled =
-      true;
-
-
-    // ---------------------------------------------------
-    // FIRST ENSURE CHAT EXISTS
-    // ---------------------------------------------------
-
-    const chatRef =
-      await ensureChatDocument(
-        chatId,
-        currentUid,
-        selectedUid
-      );
-
-
-    // ---------------------------------------------------
-    // CREATE MESSAGE
-    // ---------------------------------------------------
-
-    const messagesRef =
-      collection(
-        db,
-        CHATS_COLLECTION,
-        chatId,
-        MESSAGES_SUBCOLLECTION
-      );
-
-
-    const messageRef =
-      doc(
-        messagesRef
-      );
-
-
-    const now =
-      serverTimestamp();
-
-
-    await setDoc(
-      messageRef,
-      {
-
-        senderId:
-          currentUid,
-
-        receiverId:
-          selectedUid,
-
-        text,
-
-        createdAt:
-          now,
-
-        updatedAt:
-          now,
-
-        edited:
-          false,
-
-        seen:
-          false
-
-      }
-    );
-
-
-    // ---------------------------------------------------
-    // UPDATE CHAT PREVIEW + UNREAD
-    // ---------------------------------------------------
-
-    await updateDoc(
-      chatRef,
-      {
-
-        lastMessage:
-          text,
-
-        lastMessageAt:
-          now,
-
-        lastSenderId:
-          currentUid,
-
-        unreadFor:
-          [selectedUid],
-
-        updatedAt:
-          now
-
-      }
-    );
-
-
-    input.value =
-      "";
-
-    input.style.height =
-      "auto";
-
-  } catch (error) {
-
-    console.error(
-      "Send message error:",
-      error
-    );
-
-
-    alert(
-      error?.message ||
-      "Unable to send message."
-    );
-
-  } finally {
-
-    sendButton.disabled =
-      false;
-
-  }
-
-}
-
-
-// =========================================================
-// SAVE EDITED MESSAGE
-// =========================================================
-
-async function saveEditedMessage(
-  input,
-  sendButton
-) {
-
-  const messageId =
-    ChatState.editingMessageId;
-
-
-  const chatId =
-    ChatState.selectedChatId;
-
-
-  const text =
-    String(
-      input?.value || ""
-    )
-      .trim();
-
-
-  if (
-    !messageId ||
-    !chatId ||
-    !text
-  ) {
-
-    return;
-
-  }
-
-
-  if (
-    text.length >
-    MAX_MESSAGE_LENGTH
-  ) {
-
-    alert(
-      `Message cannot be longer than ${MAX_MESSAGE_LENGTH} characters.`
-    );
-
-    return;
-
-  }
-
-
-  try {
-
-    sendButton.disabled =
-      true;
-
-
-    const messageRef =
-      doc(
-        db,
-        CHATS_COLLECTION,
-        chatId,
-        MESSAGES_SUBCOLLECTION,
-        messageId
-      );
-
-
-    const messageSnap =
-      await getDoc(
-        messageRef
-      );
-
-
-    if (
-      !messageSnap.exists()
-    ) {
-
-      throw new Error(
-        "Message no longer exists."
-      );
-
-    }
-
-
-    const message =
-      messageSnap.data();
-
-
-    if (
-      message.senderId !==
-      ChatState.currentUser?.uid
-    ) {
-
-      throw new Error(
-        "You can edit only your own messages."
-      );
-
-    }
-
-
-    await updateDoc(
-      messageRef,
-      {
-
-        text,
-
-        edited:
-          true,
-
-        updatedAt:
-          serverTimestamp()
-
-      }
-    );
-
-
-    // ---------------------------------------------------
-    // Check whether edited message is latest.
-    // ---------------------------------------------------
-
-    const messagesSnapshot =
-      await getDocs(
-        query(
-          collection(
-            db,
-            CHATS_COLLECTION,
-            chatId,
-            MESSAGES_SUBCOLLECTION
-          ),
-          orderBy(
-            "createdAt",
-            "desc"
-          )
-        )
-      );
-
-
-    const latest =
-      messagesSnapshot.docs[0];
-
-
-    if (
-      latest &&
-      latest.id ===
-        messageId
-    ) {
-
-      await updateDoc(
-        doc(
-          db,
-          CHATS_COLLECTION,
-          chatId
-        ),
-        {
-
-          lastMessage:
-            text,
-
-          updatedAt:
-            serverTimestamp()
-
-        }
-      );
-
-    }
-
-
-    cancelMessageEdit();
-
-  } catch (error) {
-
-    console.error(
-      "Edit message error:",
-      error
-    );
-
-
-    alert(
-      error?.message ||
-      "Unable to edit message."
-    );
-
-  } finally {
-
-    sendButton.disabled =
-      false;
-
-  }
-
-}
-
-
-// =========================================================
-// CLEAR CHAT
-// =========================================================
-//
-// Deletes actual message documents from Firebase.
-//
-// Uses chunks below the Firestore batch limit.
-// =========================================================
-
-async function clearChat(
-  chatId
-) {
-
-  if (!chatId) {
-
-    throw new Error(
-      "Chat ID is missing."
-    );
-
-  }
-
-
-  const currentUid =
-    ChatState.currentUser?.uid;
-
-
-  if (!currentUid) {
-
-    throw new Error(
-      "You must be logged in."
-    );
-
-  }
-
-
-  const chatRef =
-    doc(
-      db,
-      CHATS_COLLECTION,
-      chatId
-    );
-
-
-  const chatSnap =
-    await getDoc(
-      chatRef
-    );
-
-
-  if (
-    !chatSnap.exists()
-  ) {
-
-    return;
-
-  }
-
-
-  const chatData =
-    chatSnap.data();
-
-
-  if (
-    !Array.isArray(
-      chatData.participants
-    )
-    ||
-    !chatData.participants.includes(
-      currentUid
-    )
-  ) {
-
-    throw new Error(
-      "You do not have permission to clear this chat."
-    );
-
-  }
-
-
-  const messagesRef =
-    collection(
-      db,
-      CHATS_COLLECTION,
-      chatId,
-      MESSAGES_SUBCOLLECTION
-    );
-
-
-  const messagesSnapshot =
-    await getDocs(
-      messagesRef
-    );
-
-
-  const messageDocs =
-    messagesSnapshot.docs;
-
-
-  // -----------------------------------------------------
-  // Delete messages in safe chunks.
-  // -----------------------------------------------------
-
-  for (
-    let start = 0;
-    start < messageDocs.length;
-    start += FIRESTORE_BATCH_LIMIT
-  ) {
-
-    const batch =
-      writeBatch(
-        db
-      );
-
-
-    const chunk =
-      messageDocs.slice(
-        start,
-        start +
-          FIRESTORE_BATCH_LIMIT
-      );
-
-
-    chunk.forEach(
-      (messageDoc) => {
-
-        batch.delete(
-          messageDoc.ref
-        );
-
-      }
-    );
-
-
-    await batch.commit();
-
-  }
-
-
-  // -----------------------------------------------------
-  // Delete chat metadata after all messages are deleted.
-  // -----------------------------------------------------
-
-  await deleteDoc(
-    chatRef
-  );
-
-}
-
-
-// =========================================================
-// BLOCK USER
-// =========================================================
-
-async function blockUser(
-  uid
-) {
-
-  const currentUid =
-    ChatState.currentUser?.uid;
-
-
-  if (
-    !currentUid ||
-    !uid
-  ) {
-
-    return;
-
-  }
-
-
-  try {
-
-    await updateDoc(
-      doc(
-        db,
-        USERS_COLLECTION,
-        currentUid
-      ),
-      {
-
-        blockedUsers:
-          arrayUnion(
-            uid
-          ),
-
-        updatedAt:
-          serverTimestamp()
-
-      }
-    );
-
-
-    ChatState.blockedUsers.add(
-      uid
-    );
-
-
-    delete ChatState.conversations[
-      uid
-    ];
-
-  } catch (error) {
-
-    console.error(
-      "Block user error:",
-      error
-    );
-
-
-    alert(
-      error?.message ||
-      "Unable to block this user."
-    );
-
-    throw error;
-
-  }
-
-}
-
-
-// =========================================================
-// PUBLIC RENDER
-// =========================================================
-
-async function renderChatPage(
-  container,
-  options = {}
-) {
-
-  if (!container) {
-
-    return;
-
-  }
-
-
-  cleanupChatListeners();
-
-
-  ensureChatStyles();
-
-
-  const user =
-    getCurrentUser();
-
-
-  if (!user) {
-
-    container.innerHTML = `
+    // -----------------------------------------------------
+    // Show lightweight loading state while the page module
+    // is being loaded.
+    // -----------------------------------------------------
+
+    appRoot.innerHTML = `
 
       <div class="page">
 
@@ -4131,11 +265,27 @@ async function renderChatPage(
             style="
               width:min(100%,430px);
               text-align:center;
-              padding:24px;
+              padding:28px;
             "
           >
 
-            Please log in to use English Chat.
+            <div
+              style="
+                font-size:34px;
+              "
+            >
+              🌿
+            </div>
+
+            <div
+              style="
+                margin-top:10px;
+                font-size:15px;
+                font-weight:800;
+              "
+            >
+              Loading...
+            </div>
 
           </div>
 
@@ -4145,28 +295,1367 @@ async function renderChatPage(
 
     `;
 
+
+    // -----------------------------------------------------
+    // Dynamic page import
+    // -----------------------------------------------------
+
+    const module =
+      await import(
+        `./pages/${page}-page.js`
+      );
+
+
+    // -----------------------------------------------------
+    // Preferred future API
+    // -----------------------------------------------------
+
+    if (
+      typeof module.renderPage ===
+      "function"
+    ) {
+
+      module.renderPage(
+        appRoot,
+        {
+
+          user:
+            AppState.user,
+
+          profile:
+            AppState.profile
+
+        }
+      );
+
+      return;
+
+    }
+
+
+    // -----------------------------------------------------
+    // Backward compatibility for current Grammar page.
+    // -----------------------------------------------------
+
+    if (
+      page === "grammar" &&
+      typeof module.renderGrammarPage ===
+        "function"
+    ) {
+
+      module.renderGrammarPage(
+        appRoot,
+        {
+
+          displayName:
+            AppState.profile?.displayName ||
+            "Learner"
+
+        }
+      );
+
+      return;
+
+    }
+
+
+    throw new Error(
+      `Page module "${page}-page.js" does not export renderPage().`
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      `Unable to open ${page} page:`,
+      error
+    );
+
+
+    renderPageError(
+      page
+    );
+
+  }
+
+}
+
+
+// =========================================================
+// PAGE ERROR
+// =========================================================
+
+function renderPageError(
+  page
+) {
+
+  if (!appRoot) {
+    return;
+  }
+
+
+  const pageName =
+    String(page || "page")
+      .charAt(0)
+      .toUpperCase() +
+    String(page || "page")
+      .slice(1);
+
+
+  appRoot.innerHTML = `
+
+    <div class="page">
+
+      <div
+        class="page-container"
+        style="
+          min-height:100dvh;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          padding:20px;
+        "
+      >
+
+        <div
+          class="card"
+          style="
+            width:min(100%,430px);
+            text-align:center;
+            padding:24px;
+          "
+        >
+
+          <div
+            style="
+              font-size:38px;
+            "
+          >
+            🌿
+          </div>
+
+
+          <div
+            style="
+              margin-top:10px;
+              font-size:19px;
+              font-weight:800;
+            "
+          >
+            Unable to open ${escapeHTML(pageName)}
+          </div>
+
+
+          <div
+            style="
+              margin-top:7px;
+              color:var(--text-secondary);
+              font-size:12px;
+            "
+          >
+            Please try again.
+          </div>
+
+
+          <button
+            id="pageErrorBackButton"
+            class="primary-button w-full"
+            type="button"
+            style="
+              margin-top:18px;
+            "
+          >
+            Back to Dashboard
+          </button>
+
+
+          <div
+            style="
+              margin-top:16px;
+              color:var(--text-muted);
+              font-size:11px;
+            "
+          >
+            Powered by opnora.com
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  document
+    .getElementById(
+      "pageErrorBackButton"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        navigateTo(
+          "dashboard"
+        );
+
+      }
+    );
+
+}
+
+
+// =========================================================
+// NAVIGATION
+// =========================================================
+//
+// This is the central navigation system.
+//
+// Dashboard cards only need:
+//
+// data-dashboard-page="grammar"
+//
+// data-dashboard-page="vocabulary"
+//
+// data-dashboard-page="stories"
+//
+// data-dashboard-page="chat"
+//
+// data-dashboard-page="profile"
+//
+// No page-specific code is required here.
+// =========================================================
+
+async function navigateTo(
+  page
+) {
+
+  if (
+    page === "dashboard"
+  ) {
+
+    AppState.currentPage =
+      "dashboard";
+
+
+    if (
+      AppState.user &&
+      AppState.profile
+    ) {
+
+      renderDashboard({
+
+        user:
+          AppState.user,
+
+        profile:
+          AppState.profile
+
+      });
+
+    }
+
     return;
 
   }
 
 
+  await openPage(
+    page
+  );
+
+}
+
+
+// =========================================================
+// REAL DASHBOARD
+// =========================================================
+
+function renderDashboard(
+  session
+) {
+
+  if (!appRoot) {
+    return;
+  }
+
+
+  const profile =
+    session.profile || {};
+
+
+  const displayName =
+    profile.displayName ||
+    session.user?.displayName ||
+    "Learner";
+
+
+  const email =
+    profile.email ||
+    session.user?.email ||
+    "";
+
+
+  appRoot.innerHTML = `
+
+    <div class="page">
+
+      <div
+        class="page-container"
+        style="
+          min-height:100dvh;
+          padding:20px 16px 32px;
+        "
+      >
+
+        <div
+          style="
+            width:min(100%,700px);
+            margin:0 auto;
+          "
+        >
+
+          <!-- ===========================================
+               HEADER
+               =========================================== -->
+
+          <div
+            style="
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:12px;
+              margin-bottom:20px;
+            "
+          >
+
+            <div>
+
+              <div
+                style="
+                  font-size:13px;
+                  color:var(--text-secondary);
+                "
+              >
+                ZenG English Learn
+              </div>
+
+
+              <div
+                style="
+                  margin-top:3px;
+                  font-size:24px;
+                  font-weight:800;
+                  color:var(--primary);
+                "
+              >
+                Hello, ${escapeHTML(displayName)} 👋
+              </div>
+
+            </div>
+
+
+            <button
+              type="button"
+              class="dashboard-profile-button"
+              data-dashboard-page="profile"
+              aria-label="Open profile"
+              style="
+                width:48px;
+                height:48px;
+                border:none;
+                border-radius:50%;
+                background:var(--surface-soft);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:24px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+              👤
+            </button>
+
+          </div>
+
+
+          <!-- ===========================================
+               WELCOME CARD
+               =========================================== -->
+
+          <div
+            class="card"
+            style="
+              padding:22px;
+              margin-bottom:18px;
+            "
+          >
+
+            <div
+              style="
+                font-size:36px;
+                margin-bottom:8px;
+              "
+            >
+              🌿
+            </div>
+
+
+            <div
+              style="
+                font-size:20px;
+                font-weight:800;
+              "
+            >
+              Start Learning English
+            </div>
+
+
+            <div
+              style="
+                margin-top:7px;
+                color:var(--text-secondary);
+                font-size:13px;
+                line-height:1.5;
+              "
+            >
+              Learn English, practice grammar,
+              build vocabulary and chat with confidence.
+            </div>
+
+
+            <div
+              style="
+                margin-top:16px;
+                padding:12px 14px;
+                border-radius:12px;
+                background:var(--surface-soft);
+                font-size:12px;
+                color:var(--text-secondary);
+              "
+            >
+              Account:
+
+              <strong
+                style="color:var(--text);"
+              >
+                ${escapeHTML(email)}
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <!-- ===========================================
+               LEARNING SECTION
+               =========================================== -->
+
+          <div
+            style="
+              font-size:18px;
+              font-weight:800;
+              margin-bottom:12px;
+            "
+          >
+            Learn English
+          </div>
+
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:
+                repeat(2, minmax(0, 1fr));
+              gap:12px;
+            "
+          >
+
+            <!-- =========================================
+                 GRAMMAR
+                 ========================================= -->
+
+            <button
+              type="button"
+              class="card dashboard-card"
+              data-dashboard-page="grammar"
+              style="
+                border:none;
+                text-align:left;
+                cursor:pointer;
+                padding:18px;
+              "
+            >
+
+              <div
+                style="
+                  font-size:30px;
+                "
+              >
+                📝
+              </div>
+
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:15px;
+                "
+              >
+                Grammar
+              </div>
+
+
+              <div
+                style="
+                  margin-top:4px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Improve your grammar
+              </div>
+
+            </button>
+
+
+            <!-- =========================================
+                 VOCABULARY
+                 ========================================= -->
+
+            <button
+              type="button"
+              class="card dashboard-card"
+              data-dashboard-page="vocabulary"
+              style="
+                border:none;
+                text-align:left;
+                cursor:pointer;
+                padding:18px;
+              "
+            >
+
+              <div
+                style="
+                  font-size:30px;
+                "
+              >
+                🧠
+              </div>
+
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:15px;
+                "
+              >
+                Vocabulary
+              </div>
+
+
+              <div
+                style="
+                  margin-top:4px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Learn new words
+              </div>
+
+            </button>
+
+
+            <!-- =========================================
+                 STORIES
+                 ========================================= -->
+
+            <button
+              type="button"
+              class="card dashboard-card"
+              data-dashboard-page="stories"
+              style="
+                border:none;
+                text-align:left;
+                cursor:pointer;
+                padding:18px;
+              "
+            >
+
+              <div
+                style="
+                  font-size:30px;
+                "
+              >
+                📖
+              </div>
+
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:15px;
+                "
+              >
+                Stories
+              </div>
+
+
+              <div
+                style="
+                  margin-top:4px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Read and understand
+              </div>
+
+            </button>
+
+
+            <!-- =========================================
+                 ENGLISH CHAT
+                 ========================================= -->
+
+            <button
+              type="button"
+              class="card dashboard-card"
+              data-dashboard-page="chat"
+              style="
+                border:none;
+                text-align:left;
+                cursor:pointer;
+                padding:18px;
+              "
+            >
+
+              <div
+                style="
+                  font-size:30px;
+                "
+              >
+                💬
+              </div>
+
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:15px;
+                "
+              >
+                English Chat
+              </div>
+
+
+              <div
+                style="
+                  margin-top:4px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Practice conversation
+              </div>
+
+            </button>
+
+          </div>
+
+
+          <!-- ===========================================
+               PROGRESS
+               =========================================== -->
+
+          <div
+            class="card"
+            style="
+              margin-top:18px;
+              padding:18px;
+            "
+          >
+
+            <div
+              style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:10px;
+              "
+            >
+
+              <div
+                style="
+                  font-weight:800;
+                  font-size:16px;
+                "
+              >
+                📈 Your Progress
+              </div>
+
+
+              <div
+                style="
+                  font-size:12px;
+                  color:var(--text-secondary);
+                "
+              >
+                Coming soon
+              </div>
+
+            </div>
+
+
+            <div
+              style="
+                margin-top:14px;
+                height:8px;
+                border-radius:20px;
+                background:var(--surface-soft);
+                overflow:hidden;
+              "
+            >
+
+              <div
+                style="
+                  width:0%;
+                  height:100%;
+                  border-radius:20px;
+                  background:var(--primary);
+                "
+              ></div>
+
+            </div>
+
+
+            <div
+              style="
+                margin-top:8px;
+                font-size:11px;
+                color:var(--text-secondary);
+              "
+            >
+              Your learning progress will appear here.
+            </div>
+
+          </div>
+
+
+          <!-- ===========================================
+               PROFILE
+               =========================================== -->
+
+          <button
+            type="button"
+            class="card dashboard-card"
+            data-dashboard-page="profile"
+            style="
+              width:100%;
+              margin-top:12px;
+              border:none;
+              text-align:left;
+              cursor:pointer;
+              padding:16px;
+              display:flex;
+              align-items:center;
+              gap:12px;
+            "
+          >
+
+            <div
+              style="
+                font-size:26px;
+              "
+            >
+              👤
+            </div>
+
+
+            <div>
+
+              <div
+                style="
+                  font-weight:800;
+                  font-size:14px;
+                "
+              >
+                Profile
+              </div>
+
+
+              <div
+                style="
+                  margin-top:3px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Manage your account
+              </div>
+
+            </div>
+
+          </button>
+
+
+          <!-- ===========================================
+               LOGOUT
+               =========================================== -->
+
+          <button
+            id="dashboardLogoutButton"
+            class="primary-button w-full"
+            type="button"
+            style="
+              margin-top:18px;
+            "
+          >
+            Logout
+          </button>
+
+
+          <div
+            style="
+              margin-top:16px;
+              text-align:center;
+              color:var(--text-muted);
+              font-size:11px;
+            "
+          >
+            Powered by opnora.com
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  // =======================================================
+  // DASHBOARD NAVIGATION
+  // =======================================================
+
+  const dashboardCards =
+    document.querySelectorAll(
+      "[data-dashboard-page]"
+    );
+
+
+  dashboardCards.forEach(
+    (card) => {
+
+      card.addEventListener(
+        "click",
+        async () => {
+
+          const page =
+            card.dataset.dashboardPage;
+
+
+          if (!page) {
+            return;
+          }
+
+
+          console.log(
+            "ZenG navigation:",
+            page
+          );
+
+
+          await navigateTo(
+            page
+          );
+
+        }
+      );
+
+    }
+  );
+
+
+  // =======================================================
+  // LOGOUT
+  // =======================================================
+
+  const logoutButton =
+    document.getElementById(
+      "dashboardLogoutButton"
+    );
+
+
+  logoutButton?.addEventListener(
+    "click",
+    async () => {
+
+      try {
+
+        logoutButton.disabled =
+          true;
+
+        logoutButton.textContent =
+          "Logging out...";
+
+
+        const {
+          logoutUser
+        } = await import(
+          "./services/auth-service.js"
+        );
+
+
+        await logoutUser();
+
+
+      } catch (error) {
+
+        console.error(
+          "Logout error:",
+          error
+        );
+
+
+        logoutButton.disabled =
+          false;
+
+        logoutButton.textContent =
+          "Logout";
+
+      }
+
+    }
+  );
+
+}
+
+
+// =========================================================
+// AUTHENTICATED USER
+// =========================================================
+
+async function handleAuthenticatedUser(
+  session
+) {
+
+  AppState.user =
+    session.user;
+
+
+  AppState.profile =
+    session.profile;
+
+
+  AppState.currentPage =
+    "dashboard";
+
+
+  // -------------------------------------------------------
+  // FCM device registration
+  // -------------------------------------------------------
+
   try {
 
-    await loadCurrentProfile();
+    if (
+      "serviceWorker" in
+      navigator
+    ) {
+
+      const registration =
+        await navigator
+          .serviceWorker
+          .ready;
+
+
+      await registerCurrentDevice(
+        registration
+      );
+
+    }
 
   } catch (error) {
 
-    console.error(
-      "Unable to load chat profile:",
+    console.warn(
+      "FCM device registration skipped:",
       error
     );
 
   }
 
 
-  renderChatHome(
-    container
+  // -------------------------------------------------------
+  // Dashboard
+  // -------------------------------------------------------
+
+  renderDashboard(
+    session
   );
+
+}
+
+
+// =========================================================
+// LOGGED-OUT USER
+// =========================================================
+
+function handleLoggedOutUser() {
+
+  AppState.user =
+    null;
+
+
+  AppState.profile =
+    null;
+
+
+  AppState.currentPage =
+    "login";
+
+
+  renderAuthView(
+    appRoot
+  );
+
+}
+
+
+// =========================================================
+// SESSION HANDLER
+// =========================================================
+
+async function handleSessionChange(
+  session
+) {
+
+  if (!session) {
+    return;
+  }
+
+
+  AppState.loading =
+    session.loading;
+
+
+  AppState.initialized =
+    session.initialized;
+
+
+  // -------------------------------------------------------
+  // Firebase is still checking the saved session.
+  // -------------------------------------------------------
+
+  if (
+    session.loading
+  ) {
+
+    showSplash();
+
+    return;
+
+  }
+
+
+  // -------------------------------------------------------
+  // Logged in
+  // -------------------------------------------------------
+
+  if (
+    session.user
+  ) {
+
+    await handleAuthenticatedUser(
+      session
+    );
+
+  }
+
+  // -------------------------------------------------------
+  // Logged out
+  // -------------------------------------------------------
+
+  else {
+
+    handleLoggedOutUser();
+
+  }
+
+
+  hideSplash();
+
+}
+
+
+// =========================================================
+// INTERNAL NAVIGATION EVENTS
+// =========================================================
+//
+// Individual pages can navigate without modifying app.js.
+//
+// Example:
+//
+// window.dispatchEvent(
+//   new CustomEvent("zeng:navigate", {
+//     detail: { page: "dashboard" }
+//   })
+// );
+//
+// =========================================================
+
+window.addEventListener(
+  "zeng:navigate",
+  async (event) => {
+
+    const page =
+      event.detail?.page;
+
+
+    if (!page) {
+      return;
+    }
+
+
+    await navigateTo(
+      page
+    );
+
+  }
+);
+
+
+// =========================================================
+// START APP
+// =========================================================
+
+function startApp() {
+
+  showSplash();
+
+
+  try {
+
+    startSessionListener(
+      async (session) => {
+
+        try {
+
+          await handleSessionChange(
+            session
+          );
+
+        } catch (error) {
+
+          console.error(
+            "App session handling error:",
+            error
+          );
+
+
+          hideSplash();
+
+
+          if (appRoot) {
+
+            appRoot.innerHTML = `
+
+              <div class="page">
+
+                <div
+                  class="page-container"
+                  style="
+                    min-height:100dvh;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    padding:20px;
+                  "
+                >
+
+                  <div
+                    class="card"
+                    style="
+                      width:min(100%,430px);
+                      text-align:center;
+                    "
+                  >
+
+                    <div
+                      style="
+                        font-size:40px;
+                        margin-bottom:10px;
+                      "
+                    >
+                      🌿
+                    </div>
+
+
+                    <div
+                      style="
+                        font-size:20px;
+                        font-weight:800;
+                      "
+                    >
+                      Something went wrong
+                    </div>
+
+
+                    <div
+                      style="
+                        margin-top:8px;
+                        color:var(--text-secondary);
+                        font-size:12px;
+                      "
+                    >
+                      Please refresh the app and try again.
+                    </div>
+
+
+                    <div
+                      style="
+                        margin-top:16px;
+                        color:var(--text-muted);
+                        font-size:11px;
+                      "
+                    >
+                      Powered by opnora.com
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            `;
+
+          }
+
+        }
+
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Unable to start ZenG:",
+      error
+    );
+
+
+    hideSplash();
+
+
+    if (appRoot) {
+
+      appRoot.innerHTML = `
+
+        <div class="page">
+
+          <div
+            class="page-container"
+            style="
+              min-height:100dvh;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              padding:20px;
+            "
+          >
+
+            <div
+              class="card"
+              style="
+                width:min(100%,430px);
+                text-align:center;
+              "
+            >
+
+              <div
+                style="
+                  font-size:40px;
+                "
+              >
+                🌿
+              </div>
+
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:20px;
+                "
+              >
+                Unable to start app
+              </div>
+
+
+              <div
+                style="
+                  margin-top:8px;
+                  color:var(--text-secondary);
+                  font-size:12px;
+                "
+              >
+                Please refresh the page and try again.
+              </div>
+
+
+              <div
+                style="
+                  margin-top:16px;
+                  color:var(--text-muted);
+                  font-size:11px;
+                "
+              >
+                Powered by opnora.com
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      `;
+
+    }
+
+  }
+
+}
+
+
+// =========================================================
+// DOM READY
+// =========================================================
+
+if (
+  document.readyState ===
+  "loading"
+) {
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    startApp,
+    {
+      once: true
+    }
+  );
+
+} else {
+
+  startApp();
 
 }
 
@@ -4177,8 +1666,10 @@ async function renderChatPage(
 
 export {
 
-  ChatState,
+  AppState,
 
-  renderChatPage
+  navigateTo,
+
+  renderDashboard
 
 };

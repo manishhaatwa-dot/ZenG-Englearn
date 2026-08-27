@@ -148,14 +148,9 @@ function escapeHTML(
 
 }
 
-
 // =========================================================
-// TEMPORARY DASHBOARD
+// REAL DASHBOARD
 // =========================================================
-//
-// Real English-learning dashboard will be connected
-// after authentication is tested successfully.
-//
 
 function renderDashboard(
   session
@@ -176,6 +171,12 @@ function renderDashboard(
     "Learner";
 
 
+  const email =
+    profile.email ||
+    session.user?.email ||
+    "";
+
+
   appRoot.innerHTML = `
 
     <div class="page">
@@ -184,28 +185,92 @@ function renderDashboard(
         class="page-container"
         style="
           min-height:100dvh;
-          padding:24px 16px;
+          padding:20px 16px 32px;
         "
       >
 
+        <!-- =============================================
+             HEADER
+             ============================================= -->
+
         <div
-          class="card"
           style="
-            width:min(100%,520px);
+            width:min(100%,700px);
             margin:0 auto;
           "
         >
 
           <div
             style="
-              text-align:center;
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:12px;
+              margin-bottom:20px;
+            "
+          >
+
+            <div>
+
+              <div
+                style="
+                  font-size:13px;
+                  color:var(--text-secondary);
+                "
+              >
+                ZenG English Learn
+              </div>
+
+              <div
+                style="
+                  margin-top:3px;
+                  font-size:24px;
+                  font-weight:800;
+                  color:var(--primary);
+                "
+              >
+                Hello, ${escapeHTML(displayName)} 👋
+              </div>
+
+            </div>
+
+
+            <div
+              style="
+                width:48px;
+                height:48px;
+                border-radius:50%;
+                background:var(--surface-soft);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:24px;
+                flex-shrink:0;
+              "
+              aria-label="Profile"
+            >
+              👤
+            </div>
+
+          </div>
+
+
+          <!-- ===========================================
+               WELCOME CARD
+               =========================================== -->
+
+          <div
+            class="card"
+            style="
+              padding:22px;
+              margin-bottom:18px;
             "
           >
 
             <div
               style="
-                font-size:44px;
-                margin-bottom:10px;
+                font-size:36px;
+                margin-bottom:8px;
               "
             >
               🌿
@@ -214,72 +279,396 @@ function renderDashboard(
 
             <div
               style="
-                font-size:24px;
+                font-size:20px;
                 font-weight:800;
-                color:var(--primary);
               "
             >
-              Welcome,
-              ${escapeHTML(displayName)}
+              Start Learning English
+            </div>
+
+
+            <div
+              style="
+                margin-top:7px;
+                color:var(--text-secondary);
+                font-size:13px;
+                line-height:1.5;
+              "
+            >
+              Learn English, practice grammar,
+              build vocabulary and chat with confidence.
+            </div>
+
+
+            <div
+              style="
+                margin-top:16px;
+                padding:12px 14px;
+                border-radius:12px;
+                background:var(--surface-soft);
+                font-size:12px;
+                color:var(--text-secondary);
+              "
+            >
+              Account:
+              <strong
+                style="color:var(--text);"
+              >
+                ${escapeHTML(email)}
+              </strong>
+            </div>
+
+          </div>
+
+
+          <!-- ===========================================
+               LEARNING SECTION
+               =========================================== -->
+
+          <div
+            style="
+              font-size:18px;
+              font-weight:800;
+              margin-bottom:12px;
+            "
+          >
+            Learn English
+          </div>
+
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:
+                repeat(2, minmax(0, 1fr));
+              gap:12px;
+            "
+          >
+
+            <!-- Grammar -->
+
+            <button
+              type="button"
+              class="card dashboard-card"
+              data-dashboard-page="grammar"
+              style="
+                border:none;
+                text-align:left;
+                cursor:pointer;
+                padding:18px;
+              "
+            >
+
+              <div
+                style="
+                  font-size:30px;
+                "
+              >
+                📝
+              </div>
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:15px;
+                "
+              >
+                Grammar
+              </div>
+
+              <div
+                style="
+                  margin-top:4px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Improve your grammar
+              </div>
+
+            </button>
+
+
+            <!-- Vocabulary -->
+
+            <button
+              type="button"
+              class="card dashboard-card"
+              data-dashboard-page="vocabulary"
+              style="
+                border:none;
+                text-align:left;
+                cursor:pointer;
+                padding:18px;
+              "
+            >
+
+              <div
+                style="
+                  font-size:30px;
+                "
+              >
+                🧠
+              </div>
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:15px;
+                "
+              >
+                Vocabulary
+              </div>
+
+              <div
+                style="
+                  margin-top:4px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Learn new words
+              </div>
+
+            </button>
+
+
+            <!-- Stories -->
+
+            <button
+              type="button"
+              class="card dashboard-card"
+              data-dashboard-page="stories"
+              style="
+                border:none;
+                text-align:left;
+                cursor:pointer;
+                padding:18px;
+              "
+            >
+
+              <div
+                style="
+                  font-size:30px;
+                "
+              >
+                📖
+              </div>
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:15px;
+                "
+              >
+                Stories
+              </div>
+
+              <div
+                style="
+                  margin-top:4px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Read and understand
+              </div>
+
+            </button>
+
+
+            <!-- Chat -->
+
+            <button
+              type="button"
+              class="card dashboard-card"
+              data-dashboard-page="chat"
+              style="
+                border:none;
+                text-align:left;
+                cursor:pointer;
+                padding:18px;
+              "
+            >
+
+              <div
+                style="
+                  font-size:30px;
+                "
+              >
+                💬
+              </div>
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:15px;
+                "
+              >
+                English Chat
+              </div>
+
+              <div
+                style="
+                  margin-top:4px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Practice conversation
+              </div>
+
+            </button>
+
+          </div>
+
+
+          <!-- ===========================================
+               PROGRESS
+               =========================================== -->
+
+          <div
+            class="card"
+            style="
+              margin-top:18px;
+              padding:18px;
+            "
+          >
+
+            <div
+              style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:10px;
+              "
+            >
+
+              <div
+                style="
+                  font-weight:800;
+                  font-size:16px;
+                "
+              >
+                📈 Your Progress
+              </div>
+
+              <div
+                style="
+                  font-size:12px;
+                  color:var(--text-secondary);
+                "
+              >
+                Coming soon
+              </div>
+
+            </div>
+
+
+            <div
+              style="
+                margin-top:14px;
+                height:8px;
+                border-radius:20px;
+                background:var(--surface-soft);
+                overflow:hidden;
+              "
+            >
+
+              <div
+                style="
+                  width:0%;
+                  height:100%;
+                  border-radius:20px;
+                  background:var(--primary);
+                "
+              ></div>
+
             </div>
 
 
             <div
               style="
                 margin-top:8px;
+                font-size:11px;
                 color:var(--text-secondary);
-                font-size:13px;
               "
             >
-              ZenG English Learn dashboard
-              will be connected next.
+              Your learning progress will appear here.
             </div>
 
           </div>
 
 
-          <div
+          <!-- ===========================================
+               PROFILE
+               =========================================== -->
+
+          <button
+            type="button"
+            class="card dashboard-card"
+            data-dashboard-page="profile"
             style="
-              margin-top:24px;
+              width:100%;
+              margin-top:12px;
+              border:none;
+              text-align:left;
+              cursor:pointer;
               padding:16px;
-              border-radius:16px;
-              background:var(--surface-soft);
-              text-align:center;
+              display:flex;
+              align-items:center;
+              gap:12px;
             "
           >
 
             <div
               style="
-                font-size:14px;
-                font-weight:700;
+                font-size:26px;
               "
             >
-              Your account is active
+              👤
             </div>
 
+            <div>
 
-            <div
-              style="
-                margin-top:5px;
-                color:var(--text-secondary);
-                font-size:11px;
-              "
-            >
-              Login ID:
-              ${escapeHTML(
-                profile.loginId || "—"
-              )}
+              <div
+                style="
+                  font-weight:800;
+                  font-size:14px;
+                "
+              >
+                Profile
+              </div>
+
+              <div
+                style="
+                  margin-top:3px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                Manage your account
+              </div>
+
             </div>
 
-          </div>
+          </button>
 
+
+          <!-- ===========================================
+               LOGOUT
+               =========================================== -->
 
           <button
-            id="temporaryLogoutButton"
+            id="dashboardLogoutButton"
             class="primary-button w-full"
             type="button"
             style="
-              margin-top:20px;
+              margin-top:18px;
             "
           >
             Logout
@@ -294,7 +683,7 @@ function renderDashboard(
               font-size:11px;
             "
           >
-            Powered by oprenora.com
+            Powered by opnora.com
           </div>
 
         </div>
@@ -306,9 +695,51 @@ function renderDashboard(
   `;
 
 
+  // =======================================================
+  // DASHBOARD CARD ACTIONS
+  // =======================================================
+
+  const dashboardCards =
+    document.querySelectorAll(
+      "[data-dashboard-page]"
+    );
+
+
+  dashboardCards.forEach(
+    (card) => {
+
+      card.addEventListener(
+        "click",
+        () => {
+
+          const page =
+            card.dataset.dashboardPage;
+
+
+          console.log(
+            "ZenG dashboard section selected:",
+            page
+          );
+
+
+          alert(
+            `${page.charAt(0).toUpperCase() + page.slice(1)} section will be connected next.`
+          );
+
+        }
+      );
+
+    }
+  );
+
+
+  // =======================================================
+  // LOGOUT
+  // =======================================================
+
   const logoutButton =
     document.getElementById(
-      "temporaryLogoutButton"
+      "dashboardLogoutButton"
     );
 
 
@@ -355,7 +786,6 @@ function renderDashboard(
   );
 
 }
-
 
 // =========================================================
 // AUTHENTICATED USER

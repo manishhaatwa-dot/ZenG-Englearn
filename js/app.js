@@ -11,19 +11,27 @@ import {
   registerCurrentDevice
 } from "./services/notification-service.js";
 
+import {
+  renderAuthView
+} from "./services/auth-ui-service.js";
+
 
 // =========================================================
 // APP STATE
 // =========================================================
 
 const AppState = {
+
   initialized: false,
+
   loading: true,
 
   user: null,
+
   profile: null,
 
   currentPage: null
+
 };
 
 
@@ -55,7 +63,9 @@ function hideSplash() {
 
 
   splash.style.opacity = "0";
-  splash.style.pointerEvents = "none";
+
+  splash.style.pointerEvents =
+    "none";
 
 
   setTimeout(() => {
@@ -70,6 +80,7 @@ function hideSplash() {
     }
 
   }, 220);
+
 }
 
 
@@ -91,23 +102,78 @@ function showSplash() {
 
 
   splash.style.opacity = "1";
-  splash.style.pointerEvents = "auto";
+
+  splash.style.pointerEvents =
+    "auto";
 
 }
 
 
 // =========================================================
-// BASIC APP VIEW
+// ESCAPE HTML
 // =========================================================
 
-function renderAppMessage(
-  title,
-  message
+function escapeHTML(
+  value
+) {
+
+  return String(
+    value ?? ""
+  )
+
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+
+    .replace(
+      /</g,
+      "&lt;"
+    )
+
+    .replace(
+      />/g,
+      "&gt;"
+    )
+
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
+}
+
+
+// =========================================================
+// TEMPORARY DASHBOARD
+// =========================================================
+//
+// Real English-learning dashboard will be connected
+// after authentication is tested successfully.
+//
+
+function renderDashboard(
+  session
 ) {
 
   if (!appRoot) {
     return;
   }
+
+
+  const profile =
+    session.profile || {};
+
+
+  const displayName =
+    profile.displayName ||
+    session.user?.displayName ||
+    "Learner";
 
 
   appRoot.innerHTML = `
@@ -118,47 +184,117 @@ function renderAppMessage(
         class="page-container"
         style="
           min-height:100dvh;
-          display:flex;
-          align-items:center;
-          justify-content:center;
+          padding:24px 16px;
         "
       >
 
         <div
           class="card"
           style="
-            width:min(100%,430px);
-            text-align:center;
+            width:min(100%,520px);
+            margin:0 auto;
           "
         >
 
           <div
             style="
-              font-size:38px;
-              margin-bottom:12px;
+              text-align:center;
             "
           >
-            🌿
+
+            <div
+              style="
+                font-size:44px;
+                margin-bottom:10px;
+              "
+            >
+              🌿
+            </div>
+
+
+            <div
+              style="
+                font-size:24px;
+                font-weight:800;
+                color:var(--primary);
+              "
+            >
+              Welcome,
+              ${escapeHTML(displayName)}
+            </div>
+
+
+            <div
+              style="
+                margin-top:8px;
+                color:var(--text-secondary);
+                font-size:13px;
+              "
+            >
+              ZenG English Learn dashboard
+              will be connected next.
+            </div>
+
           </div>
+
 
           <div
             style="
-              font-size:20px;
-              font-weight:800;
-              margin-bottom:8px;
+              margin-top:24px;
+              padding:16px;
+              border-radius:16px;
+              background:var(--surface-soft);
+              text-align:center;
             "
           >
-            ${escapeHTML(title)}
+
+            <div
+              style="
+                font-size:14px;
+                font-weight:700;
+              "
+            >
+              Your account is active
+            </div>
+
+
+            <div
+              style="
+                margin-top:5px;
+                color:var(--text-secondary);
+                font-size:11px;
+              "
+            >
+              Login ID:
+              ${escapeHTML(
+                profile.loginId || "—"
+              )}
+            </div>
+
           </div>
+
+
+          <button
+            id="temporaryLogoutButton"
+            class="primary-button w-full"
+            type="button"
+            style="
+              margin-top:20px;
+            "
+          >
+            Logout
+          </button>
+
 
           <div
             style="
-              color:var(--text-secondary);
-              font-size:13px;
-              line-height:1.5;
+              margin-top:16px;
+              text-align:center;
+              color:var(--text-muted);
+              font-size:11px;
             "
           >
-            ${escapeHTML(message)}
+            Powered by oprenora.com
           </div>
 
         </div>
@@ -169,46 +305,60 @@ function renderAppMessage(
 
   `;
 
-}
 
-
-// =========================================================
-// HTML ESCAPE
-// =========================================================
-
-function escapeHTML(
-  value
-) {
-
-  return String(
-    value ?? ""
-  )
-    .replace(
-      /&/g,
-      "&amp;"
-    )
-    .replace(
-      /</g,
-      "&lt;"
-    )
-    .replace(
-      />/g,
-      "&gt;"
-    )
-    .replace(
-      /"/g,
-      "&quot;"
-    )
-    .replace(
-      /'/g,
-      "&#039;"
+  const logoutButton =
+    document.getElementById(
+      "temporaryLogoutButton"
     );
 
+
+  logoutButton?.addEventListener(
+    "click",
+    async () => {
+
+      try {
+
+        logoutButton.disabled =
+          true;
+
+        logoutButton.textContent =
+          "Logging out...";
+
+
+        const {
+          logoutUser
+        } = await import(
+          "./services/auth-service.js"
+        );
+
+
+        await logoutUser();
+
+
+      } catch (error) {
+
+        console.error(
+          "Logout error:",
+          error
+        );
+
+
+        logoutButton.disabled =
+          false;
+
+        logoutButton.textContent =
+          "Logout";
+
+      }
+
+    }
+  );
+
 }
 
 
 // =========================================================
-// LOGGED-IN USER
+// AUTHENTICATED USER
 // =========================================================
 
 async function handleAuthenticatedUser(
@@ -218,25 +368,30 @@ async function handleAuthenticatedUser(
   AppState.user =
     session.user;
 
+
   AppState.profile =
     session.profile;
 
 
+  AppState.currentPage =
+    "dashboard";
+
+
   // -------------------------------------------------------
-  // Register this device for FCM.
-  //
-  // If notification permission/VAPID key is not ready,
-  // notification-service safely returns null.
+  // FCM device registration
   // -------------------------------------------------------
 
   try {
 
     if (
-      "serviceWorker" in navigator
+      "serviceWorker" in
+      navigator
     ) {
 
       const registration =
-        await navigator.serviceWorker.ready;
+        await navigator
+          .serviceWorker
+          .ready;
 
 
       await registerCurrentDevice(
@@ -256,16 +411,11 @@ async function handleAuthenticatedUser(
 
 
   // -------------------------------------------------------
-  // Dashboard routing will be connected here.
+  // Dashboard
   // -------------------------------------------------------
 
-  AppState.currentPage =
-    "dashboard";
-
-
-  renderAppMessage(
-    "ZenG English Learn",
-    "Your dashboard is ready."
+  renderDashboard(
+    session
   );
 
 }
@@ -280,16 +430,21 @@ function handleLoggedOutUser() {
   AppState.user =
     null;
 
+
   AppState.profile =
     null;
+
 
   AppState.currentPage =
     "login";
 
 
-  renderAppMessage(
-    "Welcome to ZenG English Learn",
-    "Login and registration screen will be connected here."
+  // -------------------------------------------------------
+  // ACTUAL LOGIN / REGISTER UI
+  // -------------------------------------------------------
+
+  renderAuthView(
+    appRoot
   );
 
 }
@@ -316,6 +471,10 @@ async function handleSessionChange(
     session.initialized;
 
 
+  // -------------------------------------------------------
+  // Firebase is still checking the saved session.
+  // -------------------------------------------------------
+
   if (
     session.loading
   ) {
@@ -323,8 +482,13 @@ async function handleSessionChange(
     showSplash();
 
     return;
+
   }
 
+
+  // -------------------------------------------------------
+  // Logged in
+  // -------------------------------------------------------
 
   if (
     session.user
@@ -334,7 +498,13 @@ async function handleSessionChange(
       session
     );
 
-  } else {
+  }
+
+  // -------------------------------------------------------
+  // Logged out
+  // -------------------------------------------------------
+
+  else {
 
     handleLoggedOutUser();
 
@@ -377,10 +547,68 @@ function startApp() {
           hideSplash();
 
 
-          renderAppMessage(
-            "Something went wrong",
-            "Please refresh the app and try again."
-          );
+          if (appRoot) {
+
+            appRoot.innerHTML = `
+
+              <div class="page">
+
+                <div
+                  class="page-container"
+                  style="
+                    min-height:100dvh;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    padding:20px;
+                  "
+                >
+
+                  <div
+                    class="card"
+                    style="
+                      width:min(100%,430px);
+                      text-align:center;
+                    "
+                  >
+
+                    <div
+                      style="
+                        font-size:40px;
+                        margin-bottom:10px;
+                      "
+                    >
+                      🌿
+                    </div>
+
+                    <div
+                      style="
+                        font-size:20px;
+                        font-weight:800;
+                      "
+                    >
+                      Something went wrong
+                    </div>
+
+                    <div
+                      style="
+                        margin-top:8px;
+                        color:var(--text-secondary);
+                        font-size:12px;
+                      "
+                    >
+                      Please refresh the app and try again.
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            `;
+
+          }
 
         }
 
@@ -398,10 +626,68 @@ function startApp() {
     hideSplash();
 
 
-    renderAppMessage(
-      "Unable to start app",
-      "Please refresh the page and try again."
-    );
+    if (appRoot) {
+
+      appRoot.innerHTML = `
+
+        <div class="page">
+
+          <div
+            class="page-container"
+            style="
+              min-height:100dvh;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              padding:20px;
+            "
+          >
+
+            <div
+              class="card"
+              style="
+                width:min(100%,430px);
+                text-align:center;
+              "
+            >
+
+              <div
+                style="
+                  font-size:40px;
+                "
+              >
+                🌿
+              </div>
+
+              <div
+                style="
+                  margin-top:10px;
+                  font-weight:800;
+                  font-size:20px;
+                "
+              >
+                Unable to start app
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  color:var(--text-secondary);
+                  font-size:12px;
+                "
+              >
+                Please refresh the page and try again.
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      `;
+
+    }
 
   }
 
@@ -433,7 +719,7 @@ if (
 
 
 // =========================================================
-// EXPORT APP STATE
+// EXPORT
 // =========================================================
 
 export {

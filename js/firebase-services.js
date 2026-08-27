@@ -8,7 +8,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 import {
-  getFirestore
+  initializeFirestore
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 import {
@@ -39,9 +39,23 @@ const auth =
   );
 
 
+// =========================================================
+// FIRESTORE
+// =========================================================
+//
+// Force Firestore to use long-polling.
+//
+// This helps with older browsers, proxies, antivirus
+// software and networks where the normal WebChannel
+// connection can incorrectly appear offline.
+//
+
 const db =
-  getFirestore(
-    firebaseApp
+  initializeFirestore(
+    firebaseApp,
+    {
+      experimentalForceLongPolling: true
+    }
   );
 
 
@@ -98,13 +112,6 @@ try {
 // =========================================================
 // FIREBASE APP ALIAS
 // =========================================================
-//
-// notification-service.js expects the Firebase app to be
-// exported as "app".
-//
-// Keep "firebaseApp" too, because other files may already
-// use that name.
-//
 
 const app =
   firebaseApp;

@@ -589,8 +589,7 @@ function ensureChatStyles() {
 
       border-radius:16px;
 
-      background:var(--surface);
-
+background:#fff0f5;
       box-shadow:var(--shadow, 0 2px 12px rgba(0,0,0,.06));
 
       position:relative;
@@ -682,8 +681,7 @@ function ensureChatStyles() {
       padding:6px;
 
       border-radius:13px;
-
-      background:var(--surface);
+background:#fff0f5;
 
       box-shadow:0 8px 30px rgba(0,0,0,.15);
 
@@ -724,7 +722,7 @@ function ensureChatStyles() {
 
     .zeng-chat-menu-item:hover {
 
-      background:var(--surface-soft);
+   background:#fff0f5;
 
     }
 
@@ -810,7 +808,7 @@ function ensureChatStyles() {
 
 .zeng-message.theirs {
 
-  background:var(--surface);
+ background:#fff0f5;
 
   color:var(--text);
 
@@ -949,8 +947,7 @@ function ensureChatStyles() {
 
       padding:11px 12px;
 
-      background:var(--surface);
-
+    background:#fff0f5;
       color:var(--text);
 
       font:inherit;
@@ -1013,7 +1010,7 @@ function ensureChatStyles() {
 
       border-radius:10px;
 
-      background:var(--surface-soft);
+      background:#fff0f5;
 
       font-size:10px;
 
@@ -1058,7 +1055,7 @@ function ensureChatStyles() {
 
       border-radius:12px;
 
-      background:var(--surface-soft);
+     background:#fff0f5;
 
       color:var(--text-secondary);
 
@@ -3115,7 +3112,7 @@ function showMessageMenu(
 
     z-index:100;
 
-    background:var(--surface);
+    background:#fff0f5;
 
     border-radius:12px;
 

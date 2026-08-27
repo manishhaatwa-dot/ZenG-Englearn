@@ -13,7 +13,6 @@ import {
 } from "./user-service.js";
 
 import {
-  validateUniqueLoginId,
   validateUniqueDisplayName
 } from "./identity-service.js";
 
@@ -29,35 +28,39 @@ import {
 function validateRegistrationInput({
   email,
   password,
-  loginId,
   displayName
 }) {
 
-  if (!email || !String(email).trim()) {
+  if (
+    !email ||
+    !String(email).trim()
+  ) {
+
     throw new Error(
       "Email is required."
     );
+
   }
 
+
   if (!password) {
+
     throw new Error(
       "Password is required."
     );
+
   }
 
-  if (!loginId || !String(loginId).trim()) {
-    throw new Error(
-      "Login ID is required."
-    );
-  }
 
   if (
     !displayName ||
     !String(displayName).trim()
   ) {
+
     throw new Error(
       "Display name is required."
     );
+
   }
 
 }
@@ -70,7 +73,6 @@ function validateRegistrationInput({
 async function registerAccount({
   email,
   password,
-  loginId,
   displayName
 }) {
 
@@ -79,32 +81,14 @@ async function registerAccount({
   // -------------------------------------------------------
 
   validateRegistrationInput({
+
     email,
+
     password,
-    loginId,
+
     displayName
+
   });
-
-
-  // -------------------------------------------------------
-  // Validate Login ID + uniqueness
-  // -------------------------------------------------------
-
-  const loginIdResult =
-    await validateUniqueLoginId(
-      loginId
-    );
-
-
-  if (!loginIdResult.valid) {
-    throw new Error(
-      loginIdResult.message
-    );
-  }
-
-
-  const finalLoginId =
-    loginIdResult.value;
 
 
   // -------------------------------------------------------
@@ -117,10 +101,14 @@ async function registerAccount({
     );
 
 
-  if (!displayNameResult.valid) {
+  if (
+    !displayNameResult.valid
+  ) {
+
     throw new Error(
       displayNameResult.message
     );
+
   }
 
 
@@ -133,6 +121,7 @@ async function registerAccount({
   // -------------------------------------------------------
 
   let firebaseUser = null;
+
 
   try {
 
@@ -148,23 +137,26 @@ async function registerAccount({
     // -----------------------------------------------------
 
     await createUserDocument(
+
       firebaseUser.uid,
+
       {
-        loginId:
-          finalLoginId,
 
         displayName:
           finalDisplayName,
 
         email:
-          firebaseUser.email || email,
+          firebaseUser.email ||
+          email,
 
         photoURL:
           "",
 
         nameChangeCount:
           0
+
       }
+
     );
 
 
@@ -174,23 +166,24 @@ async function registerAccount({
 
     return {
 
-      success: true,
+      success:
+        true,
 
       uid:
         firebaseUser.uid,
-
-      loginId:
-        finalLoginId,
 
       displayName:
         finalDisplayName,
 
       email:
-        firebaseUser.email || email
+        firebaseUser.email ||
+        email
 
     };
 
+
   } catch (error) {
+
 
     // -----------------------------------------------------
     // Rollback
@@ -202,10 +195,14 @@ async function registerAccount({
     //
 
     if (
+
       firebaseUser &&
+
       auth.currentUser &&
+
       auth.currentUser.uid ===
         firebaseUser.uid
+
     ) {
 
       try {
@@ -225,7 +222,9 @@ async function registerAccount({
 
 
     throw error;
+
   }
+
 }
 
 
@@ -234,5 +233,7 @@ async function registerAccount({
 // =========================================================
 
 export {
+
   registerAccount
+
 };

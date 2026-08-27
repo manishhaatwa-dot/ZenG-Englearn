@@ -92,33 +92,12 @@ async function registerAccount({
 
 
   // -------------------------------------------------------
-  // Validate Display Name + uniqueness
+  // Create Firebase Authentication account FIRST
   // -------------------------------------------------------
-
-  const displayNameResult =
-    await validateUniqueDisplayName(
-      displayName
-    );
-
-
-  if (
-    !displayNameResult.valid
-  ) {
-
-    throw new Error(
-      displayNameResult.message
-    );
-
-  }
-
-
-  const finalDisplayName =
-    displayNameResult.value;
-
-
-  // -------------------------------------------------------
-  // Create Firebase Authentication account
-  // -------------------------------------------------------
+  //
+  // This is important because the display-name uniqueness
+  // check requires an authenticated Firebase user.
+  //
 
   let firebaseUser = null;
 
@@ -127,18 +106,43 @@ async function registerAccount({
 
     firebaseUser =
       await registerUser(
-        email,
+        String(email).trim(),
         password
       );
 
 
     // -----------------------------------------------------
-    // Create Firestore user profile
+    // Validate Display Name + uniqueness
     // -----------------------------------------------------
     //
-    // The profile is created immediately after Firebase
-    // Authentication succeeds.
+    // Firebase Auth user now exists, so Firestore reads
+    // are allowed by our security rules.
     //
+
+    const displayNameResult =
+      await validateUniqueDisplayName(
+        displayName
+      );
+
+
+    if (
+      !displayNameResult.valid
+    ) {
+
+      throw new Error(
+        displayNameResult.message
+      );
+
+    }
+
+
+    const finalDisplayName =
+      displayNameResult.value;
+
+
+    // -----------------------------------------------------
+    // Create Firestore user profile
+    // -----------------------------------------------------
 
     await createUserDocument(
 
@@ -198,12 +202,14 @@ async function registerAccount({
   } catch (error) {
 
 
-    // -----------------------------------------------------
-    // Rollback
-    // -----------------------------------------------------
+    // -------------------------------------------------------
+    // ROLLBACK
+    // -------------------------------------------------------
     //
-    // If Authentication succeeded but profile creation
-    // failed, remove the newly-created Auth account.
+    // If Firebase Auth account was created but any later
+    // step failed, remove the newly-created Auth account.
+    //
+    // This prevents incomplete accounts.
     //
 
     if (

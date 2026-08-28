@@ -1731,23 +1731,17 @@ const hasAnyUnreadConversation =
   );
 
 
-          if (
-            hasAnyUnreadConversation
-          ) {
-
-            ChatState.conversationHeaderUnread =
-              true;
-
-          }
+        ChatState.conversationHeaderUnread =
+  hasAnyUnreadConversation;
 
 
-          unreadDot.style.display =
-            ChatState.conversationHeaderUnread
-            ?
-            "block"
-            :
-            "none";
-
+unreadDot.style.display =
+  ChatState.conversationHeaderUnread
+  ?
+  "block"
+  :
+  "none";
+          
         }
         onUpdate?.();
 
@@ -3178,80 +3172,7 @@ function startMessagesListener(
         // detect the latest incoming message first.
         // ---------------------------------------------
 
-        const incomingMessages =
-          snapshot.docs.filter(
-            (messageDoc) => {
-
-              const data =
-                messageDoc.data();
-
-
-              return (
-                data.receiverId ===
-                currentUid
-              );
-
-            }
-          );
-
-
-        const latestIncoming =
-          incomingMessages.length
-            ?
-            incomingMessages[
-              incomingMessages.length - 1
-            ]
-            :
-            null;
-
-
-        // ---------------------------------------------
-        // Show red dot on the header Messages icon
-        // when an incoming message arrives.
-        // ---------------------------------------------
-
-        const unreadDot =
-          document.getElementById(
-            "zengConversationUnreadDot"
-          );
-
-
-        if (
-          unreadDot &&
-          latestIncoming
-        ) {
-
-          const latestIncomingData =
-            latestIncoming.data();
-
-
-          const latestIncomingId =
-            latestIncoming.id;
-
-
-          const lastHandledIncomingId =
-            ChatState.lastHandledIncomingMessageId;
-
-
-          // Show the dot only for a newly detected
-          // incoming message.
-          if (
-            latestIncomingId !==
-            lastHandledIncomingId
-          ) {
-
-            unreadDot.style.display =
-              "block";
-
-
-            ChatState.lastHandledIncomingMessageId =
-              latestIncomingId;
-
-          }
-
-        }
-
-
+       
         // ---------------------------------------------
         // Find incoming unseen messages
         // ---------------------------------------------

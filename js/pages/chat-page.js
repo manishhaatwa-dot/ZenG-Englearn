@@ -1668,14 +1668,51 @@ function startConversationListener(
         ChatState.conversations =
           conversations;
 
-
-       // ---------------------------------------------
-        // New-message alert is handled by the chat
-        // header / conversation list.
-        //
-        // Do not show a separate alert above composer.
+// ---------------------------------------------
+        // Show unread indicator on conversation header.
         // ---------------------------------------------
 
+        const unreadDot =
+          document.getElementById(
+            "zengConversationUnreadDot"
+          );
+
+
+        if (
+          unreadDot &&
+          ChatState.view ===
+            "conversation" &&
+          ChatState.selectedUser
+        ) {
+
+          const selectedUid =
+            ChatState.selectedUser.id;
+
+
+          const conversation =
+            conversations[
+              selectedUid
+            ];
+
+
+          const hasUnreadMessage =
+            conversation &&
+            conversation.lastSenderId !==
+              currentUid &&
+            conversation.unreadFor?.includes(
+              currentUid
+            );
+
+
+          unreadDot.style.display =
+            hasUnreadMessage
+            ?
+            "block"
+            :
+            "none";
+
+        }
+      
         onUpdate?.();
 
       },
@@ -2449,13 +2486,30 @@ async function openConversation(
 
               <!-- MESSAGE / INBOX BUTTON -->
 
-              <button
+            <button
                 type="button"
                 class="zeng-conversation-messages"
                 id="zengConversationMessages"
                 aria-label="Messages"
+                style="position:relative;"
               >
                 💬
+
+                <span
+                  id="zengConversationUnreadDot"
+                  style="
+                    display:none;
+                    position:absolute;
+                    top:2px;
+                    right:2px;
+                    width:9px;
+                    height:9px;
+                    border-radius:50%;
+                    background:#d62839;
+                    border:2px solid white;
+                  "
+                ></span>
+
               </button>
 
 

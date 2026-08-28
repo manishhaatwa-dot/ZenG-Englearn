@@ -1668,8 +1668,9 @@ function startConversationListener(
         ChatState.conversations =
           conversations;
 
-// ---------------------------------------------
-        // Show unread indicator on conversation header.
+
+        // ---------------------------------------------
+        // UPDATE OPEN CONVERSATION HEADER RED DOT
         // ---------------------------------------------
 
         const unreadDot =
@@ -1696,11 +1697,16 @@ function startConversationListener(
 
 
           const hasUnreadMessage =
-            conversation &&
-            conversation.lastSenderId !==
-              currentUid &&
-            conversation.unreadFor?.includes(
-              currentUid
+            Boolean(
+              conversation &&
+              conversation.lastSenderId !==
+                currentUid &&
+              Array.isArray(
+                conversation.unreadFor
+              ) &&
+              conversation.unreadFor.includes(
+                currentUid
+              )
             );
 
 
@@ -1712,7 +1718,8 @@ function startConversationListener(
             "none";
 
         }
-      
+
+
         onUpdate?.();
 
       },
@@ -1727,8 +1734,6 @@ function startConversationListener(
     );
 
 }
-
-
 // =========================================================
 // GET SORTED INBOX USERS
 // =========================================================

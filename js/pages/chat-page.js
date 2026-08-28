@@ -1669,44 +1669,12 @@ function startConversationListener(
           conversations;
 
 
+       // ---------------------------------------------
+        // New-message alert is handled by the chat
+        // header / conversation list.
+        //
+        // Do not show a separate alert above composer.
         // ---------------------------------------------
-        // If currently open chat receives a new message,
-        // show red alert above composer.
-        // ---------------------------------------------
-
-        if (
-          ChatState.view ===
-            "conversation" &&
-          ChatState.selectedUser
-        ) {
-
-          const selectedUid =
-            ChatState.selectedUser.id;
-
-
-          const conversation =
-            conversations[
-              selectedUid
-            ];
-
-
-          if (
-            conversation &&
-            conversation.lastSenderId !==
-              currentUid &&
-            conversation.unreadFor?.includes(
-              currentUid
-            )
-          ) {
-
-            showNewMessageAlert(
-              conversation.lastMessage
-            );
-
-          }
-
-        }
-
 
         onUpdate?.();
 

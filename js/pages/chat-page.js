@@ -2237,7 +2237,9 @@ function renderChatHome(
   ChatState.newMessageAlertVisible =
     false;
 
-
+ChatState.conversationHeaderUnread =
+  false;
+  
   cleanupMessageListener();
 
 

@@ -1877,8 +1877,17 @@ function renderInbox(
 // SEARCH USERS
 // =========================================================
 
-const searchBox = document.createElement("div");
+const existingSearchBox =
+  document.getElementById(
+    "zengUserSearch"
+  )?.parentElement?.parentElement;
 
+if (existingSearchBox) {
+  existingSearchBox.remove();
+}
+
+const searchBox =
+  document.createElement("div");
 searchBox.innerHTML = `
 
   <div

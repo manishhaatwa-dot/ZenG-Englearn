@@ -2385,8 +2385,7 @@ async function openConversation(
             <!-- =========================================
                  HEADER
                  ========================================= -->
-
-            <div
+<div
               class="zeng-conversation-header"
             >
 
@@ -2448,6 +2447,18 @@ async function openConversation(
               </div>
 
 
+              <!-- MESSAGE / INBOX BUTTON -->
+
+              <button
+                type="button"
+                class="zeng-conversation-messages"
+                id="zengConversationMessages"
+                aria-label="Messages"
+              >
+                💬
+              </button>
+
+
               <button
                 type="button"
                 class="zeng-conversation-menu"
@@ -2456,6 +2467,33 @@ async function openConversation(
               >
                 ⋮
               </button>
+
+
+              <div
+                class="zeng-chat-menu-panel"
+                id="zengChatMenuPanel"
+              >
+
+                <button
+                  type="button"
+                  class="zeng-chat-menu-item"
+                  id="zengClearChatButton"
+                >
+                  🗑️ Clear chat
+                </button>
+
+
+                <button
+                  type="button"
+                  class="zeng-chat-menu-item danger"
+                  id="zengBlockUserButton"
+                >
+                  🚫 Block user
+                </button>
+
+              </div>
+
+            </div>
 
 
               <div

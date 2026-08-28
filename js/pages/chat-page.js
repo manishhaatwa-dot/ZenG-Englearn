@@ -1690,25 +1690,45 @@ function startConversationListener(
             "conversation"
         ) {
 
-          const hasAnyUnreadConversation =
-            Object.values(
-              conversations
-            ).some(
-              (conversation) => {
+          const selectedUid =
+  ChatState.selectedUser?.id;
 
-                return (
-                  conversation.lastSenderId !==
-                    currentUid &&
-                  Array.isArray(
-                    conversation.unreadFor
-                  ) &&
-                  conversation.unreadFor.includes(
-                    currentUid
-                  )
-                );
 
-              }
-            );
+const hasAnyUnreadConversation =
+  Object.entries(
+    conversations
+  ).some(
+    ([otherUid, conversation]) => {
+
+      // ---------------------------------------------
+      // Ignore the conversation that is currently open.
+      // ---------------------------------------------
+
+      if (
+        ChatState.view ===
+          "conversation" &&
+        otherUid ===
+          selectedUid
+      ) {
+
+        return false;
+
+      }
+
+
+      return (
+        conversation.lastSenderId !==
+          currentUid &&
+        Array.isArray(
+          conversation.unreadFor
+        ) &&
+        conversation.unreadFor.includes(
+          currentUid
+        )
+      );
+
+    }
+  );
 
 
           if (

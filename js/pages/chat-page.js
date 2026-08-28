@@ -2285,7 +2285,45 @@ function renderChatHome(
 
   `;
 
+// =====================================================
+  // INITIALIZE HEADER UNREAD DOT
+  // =====================================================
 
+  const unreadDot =
+    document.getElementById(
+      "zengConversationUnreadDot"
+    );
+
+
+  if (
+    unreadDot &&
+    ChatState.selectedUser
+  ) {
+
+    const conversation =
+      ChatState.conversations?.[
+        ChatState.selectedUser.id
+      ];
+
+
+    const hasUnreadMessage =
+      conversation &&
+      conversation.lastSenderId !==
+        currentUid &&
+      conversation.unreadFor?.includes(
+        currentUid
+      );
+
+
+    unreadDot.style.display =
+      hasUnreadMessage
+      ?
+      "block"
+      :
+      "none";
+
+  }
+  
   document
     .getElementById(
       "zengChatBack"

@@ -22,6 +22,15 @@ import {
 
 
 // =========================================================
+// PROFILE PHOTO SERVICE
+// =========================================================
+
+import {
+  uploadProfilePhoto
+} from "./services/profile-service.js";
+
+
+// =========================================================
 // PAGE MODULES
 // =========================================================
 
@@ -729,7 +738,12 @@ function renderDashboard(
             </div>
 
 
+            <!-- =========================================
+                 DASHBOARD PROFILE PHOTO
+                 ========================================= -->
+
             <div
+              id="zengDashboardProfilePhoto"
               style="
                 width:48px;
                 height:48px;
@@ -738,12 +752,33 @@ function renderDashboard(
                 display:flex;
                 align-items:center;
                 justify-content:center;
+                overflow:hidden;
                 font-size:24px;
                 flex-shrink:0;
+                cursor:pointer;
               "
               aria-label="Profile"
+              title="Change profile photo"
             >
-              👤
+
+              ${
+                profile.photoURL
+                ?
+                `<img
+                  src="${escapeHTML(
+                    profile.photoURL
+                  )}"
+                  alt=""
+                  style="
+                    width:100%;
+                    height:100%;
+                    object-fit:cover;
+                  "
+                >`
+                :
+                "👤"
+              }
+
             </div>
 
           </div>
@@ -1209,6 +1244,162 @@ function renderDashboard(
     </div>
 
   `;
+
+
+  // =======================================================
+  // PROFILE PHOTO
+  // =======================================================
+
+  const profilePhotoButton =
+    document.getElementById(
+      "zengDashboardProfilePhoto"
+    );
+
+
+  if (profilePhotoButton) {
+
+    const profilePhotoInput =
+      document.createElement(
+        "input"
+      );
+
+
+    profilePhotoInput.type =
+      "file";
+
+
+    profilePhotoInput.accept =
+      "image/jpeg,image/png,image/webp";
+
+
+    profilePhotoInput.style.display =
+      "none";
+
+
+    document.body.appendChild(
+      profilePhotoInput
+    );
+
+
+    profilePhotoButton.addEventListener(
+      "click",
+      () => {
+
+        profilePhotoInput.click();
+
+      }
+    );
+
+
+    profilePhotoInput.addEventListener(
+      "change",
+      async () => {
+
+        const file =
+          profilePhotoInput.files?.[0];
+
+
+        if (!file) {
+
+          return;
+
+        }
+
+
+        const uid =
+          AppState.user?.uid;
+
+
+        if (!uid) {
+
+          return;
+
+        }
+
+
+        try {
+
+          profilePhotoButton.style.opacity =
+            "0.6";
+
+
+          profilePhotoButton.style.pointerEvents =
+            "none";
+
+
+          const result =
+            await uploadProfilePhoto(
+              uid,
+              file
+            );
+
+
+          // -------------------------------------------------
+          // Update local profile state
+          // -------------------------------------------------
+
+          AppState.profile =
+            AppState.profile || {};
+
+
+          AppState.profile.photoURL =
+            result.photoURL;
+
+
+          // -------------------------------------------------
+          // Update dashboard avatar immediately
+          // -------------------------------------------------
+
+          profilePhotoButton.innerHTML = `
+
+            <img
+              src="${escapeHTML(
+                result.photoURL
+              )}"
+              alt=""
+              style="
+                width:100%;
+                height:100%;
+                object-fit:cover;
+              "
+            >
+
+          `;
+
+
+        } catch (error) {
+
+          console.error(
+            "Profile photo upload error:",
+            error
+          );
+
+
+          alert(
+            error?.message ||
+            "Unable to upload profile photo."
+          );
+
+
+        } finally {
+
+          profilePhotoButton.style.opacity =
+            "1";
+
+
+          profilePhotoButton.style.pointerEvents =
+            "auto";
+
+
+          profilePhotoInput.value =
+            "";
+
+        }
+
+      }
+    );
+
+  }
 
 
   // =======================================================

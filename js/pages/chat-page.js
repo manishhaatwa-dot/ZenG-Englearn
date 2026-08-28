@@ -129,7 +129,9 @@ const ChatState = {
 
   lastRenderedMessageCount: 0,
 
-  newMessageAlertVisible: false
+  newMessageAlertVisible: false,
+
+  conversationHeaderUnread: false
 
 };
 
@@ -1669,8 +1671,11 @@ function startConversationListener(
           conversations;
 
 
-        // ---------------------------------------------
+      // ---------------------------------------------
         // UPDATE OPEN CONVERSATION HEADER RED DOT
+        //
+        // Any OTHER conversation receiving a message
+        // keeps the header Messages icon marked.
         // ---------------------------------------------
 
         const unreadDot =
@@ -1682,44 +1687,48 @@ function startConversationListener(
         if (
           unreadDot &&
           ChatState.view ===
-            "conversation" &&
-          ChatState.selectedUser
+            "conversation"
         ) {
 
-          const selectedUid =
-            ChatState.selectedUser.id;
+          const hasAnyUnreadConversation =
+            Object.values(
+              conversations
+            ).some(
+              (conversation) => {
 
+                return (
+                  conversation.lastSenderId !==
+                    currentUid &&
+                  Array.isArray(
+                    conversation.unreadFor
+                  ) &&
+                  conversation.unreadFor.includes(
+                    currentUid
+                  )
+                );
 
-          const conversation =
-            conversations[
-              selectedUid
-            ];
-
-
-          const hasUnreadMessage =
-            Boolean(
-              conversation &&
-              conversation.lastSenderId !==
-                currentUid &&
-              Array.isArray(
-                conversation.unreadFor
-              ) &&
-              conversation.unreadFor.includes(
-                currentUid
-              )
+              }
             );
 
 
+          if (
+            hasAnyUnreadConversation
+          ) {
+
+            ChatState.conversationHeaderUnread =
+              true;
+
+          }
+
+
           unreadDot.style.display =
-            hasUnreadMessage
+            ChatState.conversationHeaderUnread
             ?
             "block"
             :
             "none";
 
         }
-
-
         onUpdate?.();
 
       },

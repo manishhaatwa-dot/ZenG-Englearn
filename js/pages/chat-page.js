@@ -1873,7 +1873,88 @@ function renderInbox(
 
   }
 
+// =========================================================
+// SEARCH USERS
+// =========================================================
 
+const searchBox = document.createElement("div");
+
+searchBox.innerHTML = `
+
+  <div
+    style="
+      margin:14px 0 12px;
+    "
+  >
+
+    <input
+      type="search"
+      id="zengUserSearch"
+      placeholder="🔍 Search learners..."
+      autocomplete="off"
+      style="
+        width:100%;
+        box-sizing:border-box;
+        padding:12px 14px;
+        border:1px solid #ddd;
+        border-radius:12px;
+        font-size:15px;
+        outline:none;
+      "
+    >
+
+  </div>
+
+`;
+
+list.parentNode.insertBefore(
+  searchBox,
+  list
+);
+
+const userSearchInput =
+  searchBox.querySelector(
+    "#zengUserSearch"
+  );
+
+userSearchInput?.addEventListener(
+  "input",
+  () => {
+
+    const searchText =
+      userSearchInput.value
+        .trim()
+        .toLowerCase();
+
+
+    list
+      .querySelectorAll(
+        "[data-chat-user]"
+      )
+      .forEach(
+        (button) => {
+
+          const name =
+            button
+              .querySelector(
+                ".zeng-user-name"
+              )
+              ?.textContent
+              .toLowerCase() || "";
+
+
+          button.style.display =
+            !searchText ||
+            name.includes(searchText)
+              ? ""
+              : "none";
+
+        }
+      );
+
+  }
+);
+  
   list.innerHTML =
     users.map(
       (user) => {

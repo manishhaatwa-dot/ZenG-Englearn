@@ -3080,7 +3080,6 @@ async function openConversation(
 
 }
 
-
 // =========================================================
 // START MESSAGE LISTENER
 // =========================================================
@@ -3141,6 +3140,88 @@ function startMessagesListener(
 
 
         // ---------------------------------------------
+        // Check whether a NEW incoming message exists.
+        //
+        // The message may become "seen" immediately
+        // because this conversation is open, so we
+        // detect the latest incoming message first.
+        // ---------------------------------------------
+
+        const incomingMessages =
+          snapshot.docs.filter(
+            (messageDoc) => {
+
+              const data =
+                messageDoc.data();
+
+
+              return (
+                data.receiverId ===
+                currentUid
+              );
+
+            }
+          );
+
+
+        const latestIncoming =
+          incomingMessages.length
+            ?
+            incomingMessages[
+              incomingMessages.length - 1
+            ]
+            :
+            null;
+
+
+        // ---------------------------------------------
+        // Show red dot on the header Messages icon
+        // when an incoming message arrives.
+        // ---------------------------------------------
+
+        const unreadDot =
+          document.getElementById(
+            "zengConversationUnreadDot"
+          );
+
+
+        if (
+          unreadDot &&
+          latestIncoming
+        ) {
+
+          const latestIncomingData =
+            latestIncoming.data();
+
+
+          const latestIncomingId =
+            latestIncoming.id;
+
+
+          const lastHandledIncomingId =
+            ChatState.lastHandledIncomingMessageId;
+
+
+          // Show the dot only for a newly detected
+          // incoming message.
+          if (
+            latestIncomingId !==
+            lastHandledIncomingId
+          ) {
+
+            unreadDot.style.display =
+              "block";
+
+
+            ChatState.lastHandledIncomingMessageId =
+              latestIncomingId;
+
+          }
+
+        }
+
+
+        // ---------------------------------------------
         // Find incoming unseen messages
         // ---------------------------------------------
 
@@ -3170,9 +3251,9 @@ function startMessagesListener(
         // ---------------------------------------------
         // Mark incoming messages seen.
         //
-        // This does NOT remove the visual new-message
-        // alert immediately if the conversation listener
-        // already detected it.
+        // The header red dot is handled separately
+        // above, so marking the message seen will not
+        // immediately remove the visual indicator.
         // ---------------------------------------------
 
         for (

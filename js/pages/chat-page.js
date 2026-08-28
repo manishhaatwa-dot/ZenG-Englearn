@@ -3729,11 +3729,12 @@ function cancelMessageEdit() {
 // ENSURE CHAT DOCUMENT
 // =========================================================
 //
-// Creates the chat document when required.
+// Creates a chat document when it does not exist.
 //
 // IMPORTANT:
-// Actual message sending uses a single Firestore batch,
-// so message + chat metadata are written together.
+// A new conversation does not need to be read first.
+// If the chat does not exist, it is created directly.
+// Existing chats are verified before use.
 // =========================================================
 
 async function ensureChatDocument(
@@ -3762,6 +3763,10 @@ async function ensureChatDocument(
       chatRef
     );
 
+
+  // -------------------------------------------------------
+  // Existing chat
+  // -------------------------------------------------------
 
   if (
     chatSnap.exists()
@@ -3804,60 +3809,41 @@ async function ensureChatDocument(
     }
 
 
-    return chatRef;
+    return {
+      chatRef,
+      exists: true
+    };
 
   }
 
 
-  await setDoc(
+  // -------------------------------------------------------
+  // New chat
+  // -------------------------------------------------------
+  //
+  // Do NOT try to read a non-existing chat again.
+  // sendMessage() will create it together with the
+  // first message.
+  // -------------------------------------------------------
+
+  return {
     chatRef,
-    {
-
-      participants,
-
-      lastMessage:
-        "",
-
-      lastMessageAt:
-        null,
-
-      lastSenderId:
-        "",
-
-      unreadFor:
-        [],
-
-      updatedAt:
-        serverTimestamp()
-
-    }
-  );
-
-
-  return chatRef;
+    exists: false
+  };
 
 }
-
 
 // =========================================================
 // SEND MESSAGE
 // =========================================================
 //
-// IMPORTANT FIX:
+// Handles both:
 //
-// Previous version did:
+// 1. Existing chat
+// 2. New chat
 //
-// 1. set message
-// 2. update chat
-//
-// If step 2 failed because of Firestore rules,
-// the message was already saved but UI showed
-// "Unable to send message".
-//
-// This version uses ONE writeBatch for:
-// - chat creation/update
-// - message creation
-//
+// For a new conversation, the chat document and first
+// message are created in ONE batch.
 // =========================================================
 
 async function sendMessage(
@@ -3928,7 +3914,7 @@ async function sendMessage(
 
 
   // =====================================================
-  // EDIT
+  // EDIT EXISTING MESSAGE
   // =====================================================
 
   if (
@@ -3952,10 +3938,13 @@ async function sendMessage(
 
 
     // ---------------------------------------------------
-    // Verify/create chat first.
+    // Get chat reference.
+    //
+    // ensureChatDocument() no longer tries to create a
+    // brand-new chat by itself.
     // ---------------------------------------------------
 
-    const chatRef =
+    const chatInfo =
       await ensureChatDocument(
         chatId,
         currentUid,
@@ -3963,9 +3952,9 @@ async function sendMessage(
       );
 
 
-    // ---------------------------------------------------
-    // New message document.
-    // ---------------------------------------------------
+    const chatRef =
+      chatInfo.chatRef;
+
 
     const messageRef =
       doc(
@@ -3982,15 +3971,54 @@ async function sendMessage(
       serverTimestamp();
 
 
-    // ---------------------------------------------------
-    // Atomic batch.
-    // ---------------------------------------------------
-
     const batch =
       writeBatch(
         db
       );
 
+
+    // ===================================================
+    // NEW CHAT
+    // ===================================================
+
+    if (
+      !chatInfo.exists
+    ) {
+
+      batch.set(
+        chatRef,
+        {
+
+          participants:
+            getParticipantIds(
+              currentUid,
+              selectedUid
+            ),
+
+          lastMessage:
+            text,
+
+          lastMessageAt:
+            now,
+
+          lastSenderId:
+            currentUid,
+
+          unreadFor:
+            [selectedUid],
+
+          updatedAt:
+            now
+
+        }
+      );
+
+    }
+
+
+    // ===================================================
+    // MESSAGE
+    // ===================================================
 
     batch.set(
       messageRef,
@@ -4020,32 +4048,42 @@ async function sendMessage(
     );
 
 
-    batch.update(
-      chatRef,
-      {
+    // ===================================================
+    // EXISTING CHAT
+    // ===================================================
 
-        lastMessage:
-          text,
+    if (
+      chatInfo.exists
+    ) {
 
-        lastMessageAt:
-          now,
+      batch.update(
+        chatRef,
+        {
 
-        lastSenderId:
-          currentUid,
+          lastMessage:
+            text,
 
-        unreadFor:
-          [selectedUid],
+          lastMessageAt:
+            now,
 
-        updatedAt:
-          now
+          lastSenderId:
+            currentUid,
 
-      }
-    );
+          unreadFor:
+            [selectedUid],
+
+          updatedAt:
+            now
+
+        }
+      );
+
+    }
 
 
-    // ---------------------------------------------------
-    // ONE commit.
-    // ---------------------------------------------------
+    // ===================================================
+    // ONE ATOMIC COMMIT
+    // =====================================================
 
     await batch.commit();
 

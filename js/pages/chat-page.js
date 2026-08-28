@@ -2285,44 +2285,7 @@ function renderChatHome(
 
   `;
 
-// =====================================================
-  // INITIALIZE HEADER UNREAD DOT
-  // =====================================================
 
-  const unreadDot =
-    document.getElementById(
-      "zengConversationUnreadDot"
-    );
-
-
-  if (
-    unreadDot &&
-    ChatState.selectedUser
-  ) {
-
-    const conversation =
-      ChatState.conversations?.[
-        ChatState.selectedUser.id
-      ];
-
-
-    const hasUnreadMessage =
-      conversation &&
-      conversation.lastSenderId !==
-        currentUid &&
-      conversation.unreadFor?.includes(
-        currentUid
-      );
-
-
-    unreadDot.style.display =
-      hasUnreadMessage
-      ?
-      "block"
-      :
-      "none";
-
-  }
   
   document
     .getElementById(
@@ -2386,7 +2349,6 @@ function renderChatHome(
   );
 
 }
-
 
 // =========================================================
 // OPEN CONVERSATION
@@ -2460,7 +2422,8 @@ async function openConversation(
             <!-- =========================================
                  HEADER
                  ========================================= -->
-<div
+
+            <div
               class="zeng-conversation-header"
             >
 
@@ -2524,7 +2487,7 @@ async function openConversation(
 
               <!-- MESSAGE / INBOX BUTTON -->
 
-            <button
+              <button
                 type="button"
                 class="zeng-conversation-messages"
                 id="zengConversationMessages"
@@ -2559,33 +2522,6 @@ async function openConversation(
               >
                 ⋮
               </button>
-
-
-              <div
-                class="zeng-chat-menu-panel"
-                id="zengChatMenuPanel"
-              >
-
-                <button
-                  type="button"
-                  class="zeng-chat-menu-item"
-                  id="zengClearChatButton"
-                >
-                  🗑️ Clear chat
-                </button>
-
-
-                <button
-                  type="button"
-                  class="zeng-chat-menu-item danger"
-                  id="zengBlockUserButton"
-                >
-                  🚫 Block user
-                </button>
-
-              </div>
-
-            </div>
 
 
               <div
@@ -2667,7 +2603,9 @@ async function openConversation(
                    EDIT BAR
                    ======================================= -->
 
-              <div
+                  
+
+        <div
                 id="zengEditBar"
                 class="zeng-edit-bar"
               >

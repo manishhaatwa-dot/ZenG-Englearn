@@ -2307,6 +2307,187 @@ function hideNewMessageAlert() {
 
 }
 
+// =========================================================
+// RENDER ALL USERS
+// =========================================================
+
+function renderAllUsers(
+  container
+) {
+
+  const list =
+    container.querySelector(
+      "#zengUserList"
+    );
+
+
+  if (!list) {
+    return;
+  }
+
+
+  const users =
+    [...ChatState.users];
+
+
+  if (
+    users.length === 0
+  ) {
+
+    list.innerHTML = `
+
+      <div class="card zeng-chat-empty">
+
+        No other learners are available yet.
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  list.innerHTML =
+    users.map(
+      (user) => {
+
+        const photo =
+          user.photoURL
+          ?
+          `<img
+            src="${escapeHTML(
+              user.photoURL
+            )}"
+            alt=""
+            style="
+              width:100%;
+              height:100%;
+              object-fit:cover;
+            "
+          >`
+          :
+          "👤";
+
+
+        return `
+
+          <button
+            type="button"
+            class="card zeng-user-item"
+            data-chat-user="${escapeHTML(
+              user.id
+            )}"
+            style="
+              width:100%;
+              border:none;
+              text-align:left;
+              cursor:pointer;
+              display:flex;
+              align-items:center;
+              gap:12px;
+              padding:14px;
+              margin-bottom:10px;
+            "
+          >
+
+            <div
+              class="zeng-user-avatar"
+              style="
+                flex-shrink:0;
+              "
+            >
+              ${photo}
+            </div>
+
+
+            <div
+              style="
+                min-width:0;
+              "
+            >
+
+              <div
+                class="zeng-user-name"
+                style="
+                  font-weight:800;
+                  font-size:15px;
+                "
+              >
+                ${escapeHTML(
+                  user.displayName ||
+                  "Learner"
+                )}
+              </div>
+
+
+              <div
+                style="
+                  margin-top:3px;
+                  font-size:11px;
+                  color:var(--text-secondary);
+                "
+              >
+                English learner
+              </div>
+
+            </div>
+
+          </button>
+
+        `;
+
+      }
+    )
+    .join("");
+
+
+  list
+    .querySelectorAll(
+      "[data-chat-user]"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          async () => {
+
+            const userId =
+              button.dataset.chatUser;
+
+
+            if (!userId) {
+              return;
+            }
+
+
+            const selectedUser =
+              ChatState.users.find(
+                (user) =>
+                  user.id === userId
+              );
+
+
+            if (!selectedUser) {
+              return;
+            }
+
+
+            await openConversation(
+              container,
+              selectedUser
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
 
 // =========================================================
 // RENDER CHAT HOME / INBOX
@@ -2381,7 +2562,22 @@ ChatState.conversationHeaderUnread =
                 </div>
 
               </div>
-
+<button
+                type="button"
+                id="zengUsersButton"
+                aria-label="Users"
+                style="
+                  border:none;
+                  background:var(--surface-soft);
+                  border-radius:12px;
+                  padding:10px 12px;
+                  font-size:20px;
+                  cursor:pointer;
+                  flex-shrink:0;
+                "
+              >
+                👥
+              </button>
             </div>
 
           </div>
@@ -2446,22 +2642,100 @@ ChatState.conversationHeaderUnread =
     );
 
 
-  startUsersListener(
+  // =====================================================
+// USERS BUTTON
+// =====================================================
+
+document
+  .getElementById(
+    "zengUsersButton"
+  )
+  ?.addEventListener(
+    "click",
     () => {
 
-      if (
-        ChatState.view ===
-        "inbox"
-      ) {
+      ChatState.view =
+        "users";
 
-        renderInbox(
-          container
+
+      const title =
+        container.querySelector(
+          ".zeng-inbox-title"
         );
+
+
+      const subtitle =
+        container.querySelector(
+          ".zeng-inbox-subtitle"
+        );
+
+
+      const conversationsTitle =
+        container.querySelector(
+          "#zengUserList"
+        )?.previousElementSibling;
+
+
+      if (title) {
+
+        title.innerHTML =
+          "👥 Users";
 
       }
 
+
+      if (subtitle) {
+
+        subtitle.textContent =
+          "Find learners and start a conversation.";
+
+      }
+
+
+      if (conversationsTitle) {
+
+        conversationsTitle.textContent =
+          "All Learners";
+
+      }
+
+
+      renderAllUsers(
+        container
+      );
+
     }
   );
+
+  
+  startUsersListener(
+  () => {
+
+    if (
+      ChatState.view ===
+      "inbox"
+    ) {
+
+      renderInbox(
+        container
+      );
+
+    }
+
+
+    if (
+      ChatState.view ===
+      "users"
+    ) {
+
+      renderAllUsers(
+        container
+      );
+
+    }
+
+  }
+);
 
 
   startConversationListener(

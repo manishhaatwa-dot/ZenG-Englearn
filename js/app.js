@@ -30,6 +30,21 @@ import {
   uploadProfilePhoto
 } from "./services/profile-service.js";
 
+import {
+  updateDisplayName
+} from "./services/profile-service.js";
+
+import {
+  updateUserDocument
+} from "./services/user-service.js";
+
+import {
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+import {
+  auth
+} from "./firebase-services.js";
 
 // =========================================================
 // PAGE MODULES
@@ -738,6 +753,22 @@ function renderDashboard(
 
             </div>
 
+<button
+  type="button"
+  id="editDisplayNameButton"
+  style="
+    margin-top:6px;
+    border:none;
+    background:transparent;
+    color:var(--primary);
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    padding:2px 0;
+  "
+>
+  ✏️ Edit name
+</button>
 
             <!-- =========================================
                  DASHBOARD PROFILE PHOTO
@@ -1403,6 +1434,197 @@ function renderDashboard(
   }
 
 
+// =======================================================
+  // EDIT DISPLAY NAME
+  // =======================================================
+
+  const editDisplayNameButton =
+    document.getElementById(
+      "editDisplayNameButton"
+    );
+
+
+  editDisplayNameButton?.addEventListener(
+    "click",
+    async () => {
+
+      const currentName =
+        AppState.profile?.displayName ||
+        AppState.user?.displayName ||
+        "";
+
+
+      const newName =
+        prompt(
+          "Enter your new display name:",
+          currentName
+        );
+
+
+      // Cancel
+      if (newName === null) {
+        return;
+      }
+
+
+      const trimmedName =
+        newName.trim();
+
+
+      if (!trimmedName) {
+
+        alert(
+          "Display name cannot be empty."
+        );
+
+        return;
+
+      }
+
+
+      if (trimmedName.length > 30) {
+
+        alert(
+          "Display name must be 30 characters or less."
+        );
+
+        return;
+
+      }
+
+
+      if (
+        trimmedName ===
+        currentName
+      ) {
+
+        return;
+
+      }
+
+
+      const uid =
+        AppState.user?.uid;
+
+
+      if (!uid) {
+
+        alert(
+          "Unable to identify your account."
+        );
+
+        return;
+
+      }
+
+
+      try {
+
+        editDisplayNameButton.disabled =
+          true;
+
+        editDisplayNameButton.textContent =
+          "Saving...";
+
+
+        // -------------------------------------------------
+        // Update Firestore user profile
+        // -------------------------------------------------
+
+        await updateUserDocument(
+          uid,
+          {
+            displayName:
+              trimmedName,
+
+            displayNameLower:
+              trimmedName.toLowerCase()
+          }
+        );
+
+
+        // -------------------------------------------------
+        // Update Firebase Auth profile
+        // -------------------------------------------------
+
+        if (
+          auth.currentUser &&
+          auth.currentUser.uid === uid
+        ) {
+
+          await updateProfile(
+            auth.currentUser,
+            {
+              displayName:
+                trimmedName
+            }
+          );
+
+        }
+
+
+        // -------------------------------------------------
+        // Update local app state immediately
+        // -------------------------------------------------
+
+        AppState.profile =
+          AppState.profile || {};
+
+
+        AppState.profile.displayName =
+          trimmedName;
+
+
+        AppState.profile.displayNameLower =
+          trimmedName.toLowerCase();
+
+
+        if (AppState.user) {
+
+          AppState.user.displayName =
+            trimmedName;
+
+        }
+
+
+        // -------------------------------------------------
+        // Re-render dashboard
+        // -------------------------------------------------
+
+        renderDashboard({
+          user:
+            AppState.user,
+
+          profile:
+            AppState.profile
+        });
+
+
+      } catch (error) {
+
+        console.error(
+          "Display name update error:",
+          error
+        );
+
+
+        alert(
+          error?.message ||
+          "Unable to update your display name."
+        );
+
+
+        editDisplayNameButton.disabled =
+          false;
+
+        editDisplayNameButton.textContent =
+          "✏️ Edit name";
+
+      }
+
+    }
+  );
+  
   // =======================================================
   // DASHBOARD NAVIGATION
   // =======================================================

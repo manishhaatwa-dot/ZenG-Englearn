@@ -1764,8 +1764,21 @@ unreadDot.style.display =
 function getSortedInboxUsers() {
 
   const users =
-    [...ChatState.users];
+  ChatState.users.filter(
+    (user) => {
 
+      const conversation =
+        ChatState.conversations[
+          user.id
+        ];
+
+      return Boolean(
+        conversation &&
+        conversation.lastMessageAt
+      );
+
+    }
+  );
 
   users.sort(
     (a, b) => {

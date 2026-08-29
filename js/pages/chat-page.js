@@ -2851,6 +2851,28 @@ async function openConversation(
 
 
   // =====================================================
+  // MESSAGES / INBOX
+  // =====================================================
+
+  document
+    .getElementById(
+      "zengConversationMessages"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        cleanupMessageListener();
+
+        renderChatHome(
+          container
+        );
+
+      }
+    );
+
+  
+  // =====================================================
   // CHAT MENU
   // =====================================================
 

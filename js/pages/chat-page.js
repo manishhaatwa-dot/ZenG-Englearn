@@ -3206,85 +3206,227 @@ async function openConversation(
         );
 
 
-       const confirmed =
-  window.confirm(
-    "Clear all messages from this chat? This cannot be undone."
-  );
+        // -------------------------------------------------
+        // CUSTOM CONFIRMATION
+        // -------------------------------------------------
 
-
-        if (!confirmed) {
-
-          return;
-
-        }
-
-
-        const button =
-          document.getElementById(
-            "zengClearChatButton"
+        const overlay =
+          document.createElement(
+            "div"
           );
 
 
-        if (button) {
+        overlay.style.cssText = `
+          position:fixed;
+          inset:0;
+          z-index:99999;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          padding:20px;
+          background:rgba(0,0,0,0.35);
+        `;
 
-          button.disabled =
-            true;
 
-          button.textContent =
-            "Clearing...";
-
-        }
-
-
-        try {
-
-          await clearChat(
-            chatId
+        const popup =
+          document.createElement(
+            "div"
           );
 
 
-          delete ChatState.conversations[
-            selectedUser.id
-          ];
+        popup.style.cssText = `
+          width:min(100%,360px);
+          background:var(--surface);
+          border-radius:16px;
+          padding:22px;
+          box-shadow:0 12px 35px rgba(0,0,0,0.20);
+        `;
 
 
-          cleanupMessageListener();
+        popup.innerHTML = `
+
+          <div
+            style="
+              font-size:18px;
+              font-weight:800;
+              color:var(--text);
+            "
+          >
+            Clear Chat?
+          </div>
 
 
-          renderChatHome(
-            container
+          <div
+            style="
+              margin-top:8px;
+              font-size:13px;
+              line-height:1.5;
+              color:var(--text-secondary);
+            "
+          >
+            Clear all messages from this chat?
+            This cannot be undone.
+          </div>
+
+
+          <div
+            style="
+              display:flex;
+              justify-content:flex-end;
+              gap:10px;
+              margin-top:20px;
+            "
+          >
+
+            <button
+              type="button"
+              id="zengClearCancel"
+              style="
+                border:none;
+                background:var(--surface-soft);
+                color:var(--text);
+                padding:10px 16px;
+                border-radius:10px;
+                font-weight:700;
+                cursor:pointer;
+              "
+            >
+              Cancel
+            </button>
+
+
+            <button
+              type="button"
+              id="zengClearConfirm"
+              style="
+                border:none;
+                background:var(--primary);
+                color:white;
+                padding:10px 16px;
+                border-radius:10px;
+                font-weight:700;
+                cursor:pointer;
+              "
+            >
+              Clear
+            </button>
+
+          </div>
+
+        `;
+
+
+        overlay.appendChild(
+          popup
+        );
+
+
+        document.body.appendChild(
+          overlay
+        );
+
+
+        // -------------------------------------------------
+        // CANCEL
+        // -------------------------------------------------
+
+        document
+          .getElementById(
+            "zengClearCancel"
+          )
+          ?.addEventListener(
+            "click",
+            () => {
+
+              overlay.remove();
+
+            }
           );
 
 
-        } catch (error) {
+        // -------------------------------------------------
+        // CONFIRM CLEAR
+        // -------------------------------------------------
 
-          console.error(
-            "Clear chat error:",
-            error
+        document
+          .getElementById(
+            "zengClearConfirm"
+          )
+          ?.addEventListener(
+            "click",
+            async () => {
+
+              const confirmButton =
+                document.getElementById(
+                  "zengClearConfirm"
+                );
+
+
+              if (confirmButton) {
+
+                confirmButton.disabled =
+                  true;
+
+                confirmButton.textContent =
+                  "Clearing...";
+
+              }
+
+
+              try {
+
+                await clearChat(
+                  chatId
+                );
+
+
+                delete ChatState.conversations[
+                  selectedUser.id
+                ];
+
+
+                cleanupMessageListener();
+
+
+                overlay.remove();
+
+
+                renderChatHome(
+                  container
+                );
+
+
+              } catch (error) {
+
+                console.error(
+                  "Clear chat error:",
+                  error
+                );
+
+
+                if (confirmButton) {
+
+                  confirmButton.disabled =
+                    false;
+
+                  confirmButton.textContent =
+                    "Clear";
+
+                }
+
+
+                alert(
+                  error?.message ||
+                  "Unable to clear chat."
+                );
+
+              }
+
+            }
           );
-
-
-          alert(
-            error?.message ||
-            "Unable to clear chat."
-          );
-
-
-          if (button) {
-
-            button.disabled =
-              false;
-
-            button.textContent =
-              "🗑️ Clear chat";
-
-          }
-
-        }
 
       }
     );
-
 
   // =====================================================
   // BLOCK USER

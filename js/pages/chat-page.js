@@ -3206,10 +3206,10 @@ async function openConversation(
         );
 
 
-        const confirmed =
-          window.confirm(
-            "Clear all messages from this chat? This will permanently delete the messages from Firebase."
-          );
+       const confirmed =
+  window.confirm(
+    "Clear all messages from this chat? This cannot be undone."
+  );
 
 
         if (!confirmed) {

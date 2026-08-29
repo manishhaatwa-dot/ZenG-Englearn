@@ -3303,42 +3303,222 @@ async function openConversation(
         );
 
 
-        const confirmed =
-          window.confirm(
-            `Block ${selectedUser.displayName || "this user"}?`
+        // -------------------------------------------------
+        // CUSTOM CONFIRMATION
+        // -------------------------------------------------
+
+        const overlay =
+          document.createElement(
+            "div"
           );
 
 
-        if (!confirmed) {
+        overlay.style.cssText = `
+          position:fixed;
+          inset:0;
+          z-index:99999;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          padding:20px;
+          background:rgba(0,0,0,0.35);
+        `;
 
-          return;
 
-        }
-
-
-        try {
-
-          await blockUser(
-            selectedUser.id
+        const popup =
+          document.createElement(
+            "div"
           );
 
 
-          cleanupMessageListener();
+        popup.style.cssText = `
+          width:min(100%,360px);
+          background:var(--surface);
+          border-radius:16px;
+          padding:22px;
+          box-shadow:0 12px 35px rgba(0,0,0,0.20);
+        `;
 
 
-          renderChatHome(
-            container
+        popup.innerHTML = `
+
+          <div
+            style="
+              font-size:18px;
+              font-weight:800;
+              color:var(--text);
+            "
+          >
+            Block ${escapeHTML(
+              selectedUser.displayName ||
+              "this user"
+            )}?
+          </div>
+
+
+          <div
+            style="
+              margin-top:8px;
+              font-size:13px;
+              line-height:1.5;
+              color:var(--text-secondary);
+            "
+          >
+            You will no longer receive messages
+            from this user.
+          </div>
+
+
+          <div
+            style="
+              display:flex;
+              justify-content:flex-end;
+              gap:10px;
+              margin-top:20px;
+            "
+          >
+
+            <button
+              type="button"
+              id="zengBlockCancel"
+              style="
+                border:none;
+                background:var(--surface-soft);
+                color:var(--text);
+                padding:10px 16px;
+                border-radius:10px;
+                font-weight:700;
+                cursor:pointer;
+              "
+            >
+              Cancel
+            </button>
+
+
+            <button
+              type="button"
+              id="zengBlockConfirm"
+              style="
+                border:none;
+                background:#d62839;
+                color:white;
+                padding:10px 16px;
+                border-radius:10px;
+                font-weight:700;
+                cursor:pointer;
+              "
+            >
+              Block
+            </button>
+
+          </div>
+
+        `;
+
+
+        overlay.appendChild(
+          popup
+        );
+
+
+        document.body.appendChild(
+          overlay
+        );
+
+
+        // -------------------------------------------------
+        // CANCEL
+        // -------------------------------------------------
+
+        document
+          .getElementById(
+            "zengBlockCancel"
+          )
+          ?.addEventListener(
+            "click",
+            () => {
+
+              overlay.remove();
+
+            }
           );
 
 
-        } catch (error) {
+        // -------------------------------------------------
+        // CONFIRM BLOCK
+        // -------------------------------------------------
 
-          console.error(
-            "Block user error:",
-            error
+        document
+          .getElementById(
+            "zengBlockConfirm"
+          )
+          ?.addEventListener(
+            "click",
+            async () => {
+
+              const confirmButton =
+                document.getElementById(
+                  "zengBlockConfirm"
+                );
+
+
+              if (confirmButton) {
+
+                confirmButton.disabled =
+                  true;
+
+                confirmButton.textContent =
+                  "Blocking...";
+
+              }
+
+
+              try {
+
+                await blockUser(
+                  selectedUser.id
+                );
+
+
+                overlay.remove();
+
+
+                cleanupMessageListener();
+
+
+                renderChatHome(
+                  container
+                );
+
+
+              } catch (error) {
+
+                console.error(
+                  "Block user error:",
+                  error
+                );
+
+
+                if (confirmButton) {
+
+                  confirmButton.disabled =
+                    false;
+
+                  confirmButton.textContent =
+                    "Block";
+
+                }
+
+
+                alert(
+                  error?.message ||
+                  "Unable to block this user."
+                );
+
+              }
+
+            }
           );
-
-        }
 
       }
     );

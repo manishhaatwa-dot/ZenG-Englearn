@@ -9,7 +9,10 @@ import {
   signOut,
   deleteUser,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  reload
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 import {
@@ -136,6 +139,129 @@ async function loginUser(
 
 
 // =========================================================
+// SEND EMAIL VERIFICATION
+// =========================================================
+//
+// Sends Firebase's verification email to the currently
+// authenticated user.
+//
+
+async function sendVerificationEmail() {
+
+  const currentUser =
+    auth.currentUser;
+
+
+  if (!currentUser) {
+
+    throw new Error(
+      "No authenticated user found."
+    );
+
+  }
+
+
+  if (
+    currentUser.emailVerified
+  ) {
+
+    return true;
+
+  }
+
+
+  await sendEmailVerification(
+    currentUser
+  );
+
+
+  return true;
+
+}
+
+
+// =========================================================
+// CHECK EMAIL VERIFICATION
+// =========================================================
+
+function isEmailVerified() {
+
+  return Boolean(
+    auth.currentUser?.emailVerified
+  );
+
+}
+
+
+// =========================================================
+// RELOAD CURRENT USER
+// =========================================================
+//
+// Firebase Auth user data can be refreshed after the user
+// clicks the verification link.
+//
+
+async function reloadCurrentAuthUser() {
+
+  const currentUser =
+    auth.currentUser;
+
+
+  if (!currentUser) {
+
+    throw new Error(
+      "No authenticated user found."
+    );
+
+  }
+
+
+  await reload(
+    currentUser
+  );
+
+
+  return currentUser;
+
+}
+
+
+// =========================================================
+// SEND PASSWORD RESET EMAIL
+// =========================================================
+//
+// Firebase sends the password-reset link to the email
+// address entered by the user.
+//
+
+async function sendPasswordReset(
+  email
+) {
+
+  if (!email) {
+
+    throw new Error(
+      "Email is required."
+    );
+
+  }
+
+
+  await ensureAuthPersistence();
+
+
+  await sendPasswordResetEmail(
+    auth,
+    email.trim()
+  );
+
+
+  return true;
+
+}
+
+
+// =========================================================
 // LOGOUT USER
 // =========================================================
 //
@@ -216,6 +342,14 @@ export {
   registerUser,
 
   loginUser,
+
+  sendVerificationEmail,
+
+  isEmailVerified,
+
+  reloadCurrentAuthUser,
+
+  sendPasswordReset,
 
   logoutUser,
 

@@ -23,20 +23,30 @@ import {
 
 
 // =========================================================
-// PROFILE / ACCOUNT SERVICES
+// PROFILE SERVICE
 // =========================================================
 
 import {
-  updateDisplayName,
-  removeProfilePhoto
+  uploadProfilePhoto,
+  updateDisplayName
 } from "./services/profile-service.js";
 
-import {
-  deleteUserDocument
-} from "./services/user-service.js";
+
+// =========================================================
+// USER SERVICE
+// =========================================================
 
 import {
-  deleteUser
+  updateUserDocument
+} from "./services/user-service.js";
+
+
+// =========================================================
+// FIREBASE AUTH
+// =========================================================
+
+import {
+  updateProfile
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 import {
@@ -700,6 +710,7 @@ function renderDashboard(
           "
         >
 
+
           <!-- ===========================================
                HEADER
                =========================================== -->
@@ -708,18 +719,150 @@ function renderDashboard(
             style="
               display:flex;
               align-items:flex-start;
-              justify-content:space-between;
               gap:12px;
               margin-bottom:20px;
             "
           >
 
+
             <!-- =========================================
-                 TITLE + NAME
+                 LEFT SIDE — DASHBOARD MENU
                  ========================================= -->
 
             <div
               style="
+                position:relative;
+                flex-shrink:0;
+              "
+            >
+
+              <button
+                type="button"
+                id="dashboardMenuButton"
+                aria-label="Menu"
+                style="
+                  width:40px;
+                  height:40px;
+                  margin-top:2px;
+                  border:none;
+                  border-radius:12px;
+                  background:var(--surface-soft);
+                  color:var(--text);
+                  font-size:22px;
+                  cursor:pointer;
+                  display:flex;
+                  align-items:center;
+                  justify-content:center;
+                "
+              >
+                ☰
+              </button>
+
+
+              <!-- =====================================
+                   DASHBOARD MENU PANEL
+                   ===================================== -->
+
+              <div
+                id="dashboardMenuPanel"
+                style="
+                  display:none;
+                  position:absolute;
+                  top:46px;
+                  left:0;
+                  z-index:1000;
+                  width:210px;
+                  padding:8px;
+                  background:var(--surface);
+                  border:1px solid var(--border);
+                  border-radius:14px;
+                  box-shadow:0 8px 24px rgba(0,0,0,0.12);
+                "
+              >
+
+                <button
+                  type="button"
+                  id="dashboardMenuEditName"
+                  style="
+                    width:100%;
+                    border:none;
+                    background:transparent;
+                    text-align:left;
+                    padding:11px 12px;
+                    border-radius:10px;
+                    font-size:14px;
+                    cursor:pointer;
+                  "
+                >
+                  ✏️ Edit Name
+                </button>
+
+
+                <button
+                  type="button"
+                  id="dashboardMenuDeleteAccount"
+                  style="
+                    width:100%;
+                    border:none;
+                    background:transparent;
+                    text-align:left;
+                    padding:11px 12px;
+                    border-radius:10px;
+                    font-size:14px;
+                    cursor:pointer;
+                  "
+                >
+                  🗑️ Delete Account
+                </button>
+
+
+                <button
+                  type="button"
+                  id="dashboardMenuPrivacy"
+                  style="
+                    width:100%;
+                    border:none;
+                    background:transparent;
+                    text-align:left;
+                    padding:11px 12px;
+                    border-radius:10px;
+                    font-size:14px;
+                    cursor:pointer;
+                  "
+                >
+                  🔒 Privacy
+                </button>
+
+
+                <button
+                  type="button"
+                  id="dashboardMenuHelp"
+                  style="
+                    width:100%;
+                    border:none;
+                    background:transparent;
+                    text-align:left;
+                    padding:11px 12px;
+                    border-radius:10px;
+                    font-size:14px;
+                    cursor:pointer;
+                  "
+                >
+                  ❓ Help
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <!-- =========================================
+                 CENTER — TITLE + NAME + EDIT
+                 ========================================= -->
+
+            <div
+              style="
+                flex:1;
                 min-width:0;
               "
             >
@@ -747,135 +890,68 @@ function renderDashboard(
                 👋
               </div>
 
+
+              <button
+                type="button"
+                id="editDisplayNameButton"
+                style="
+                  margin-top:6px;
+                  border:none;
+                  background:transparent;
+                  color:var(--primary);
+                  font-size:12px;
+                  font-weight:700;
+                  cursor:pointer;
+                  padding:2px 0;
+                "
+              >
+                ✏️ Edit name
+              </button>
+
             </div>
 
 
             <!-- =========================================
-                 DASHBOARD MENU
+                 RIGHT SIDE — PROFILE PHOTO
                  ========================================= -->
 
             <div
+              id="zengDashboardProfilePhoto"
               style="
-                position:relative;
+                width:48px;
+                height:48px;
+                margin-top:0;
+                border-radius:50%;
+                background:var(--surface-soft);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                overflow:hidden;
+                font-size:24px;
                 flex-shrink:0;
+                cursor:pointer;
               "
+              aria-label="Profile"
+              title="Change profile photo"
             >
 
-              <button
-                type="button"
-                id="dashboardMenuButton"
-                aria-label="Menu"
-                style="
-                  width:42px;
-                  height:42px;
-                  border:none;
-                  border-radius:12px;
-                  background:var(--surface-soft);
-                  color:var(--text);
-                  font-size:22px;
-                  cursor:pointer;
-                  display:flex;
-                  align-items:center;
-                  justify-content:center;
-                "
-              >
-                ☰
-              </button>
-
-
-              <!-- =====================================
-                   MENU PANEL
-                   ===================================== -->
-
-              <div
-                id="dashboardMenuPanel"
-                style="
-                  display:none;
-                  position:absolute;
-                  top:48px;
-                  right:0;
-                  z-index:1000;
-                  width:220px;
-                  padding:8px;
-                  background:var(--surface);
-                  border:1px solid var(--border);
-                  border-radius:14px;
-                  box-shadow:0 8px 24px rgba(0,0,0,0.12);
-                "
-              >
-
-                <button
-                  type="button"
-                  id="dashboardMenuEditName"
+              ${
+                profile.photoURL
+                ?
+                `<img
+                  src="${escapeHTML(
+                    profile.photoURL
+                  )}"
+                  alt=""
                   style="
                     width:100%;
-                    border:none;
-                    background:transparent;
-                    text-align:left;
-                    padding:12px;
-                    border-radius:10px;
-                    font-size:14px;
-                    cursor:pointer;
+                    height:100%;
+                    object-fit:cover;
                   "
-                >
-                  ✏️ Edit Name
-                </button>
-
-
-                <button
-                  type="button"
-                  id="dashboardMenuDeleteAccount"
-                  style="
-                    width:100%;
-                    border:none;
-                    background:transparent;
-                    text-align:left;
-                    padding:12px;
-                    border-radius:10px;
-                    font-size:14px;
-                    cursor:pointer;
-                  "
-                >
-                  🗑️ Delete Account
-                </button>
-
-
-                <button
-                  type="button"
-                  id="dashboardMenuPrivacy"
-                  style="
-                    width:100%;
-                    border:none;
-                    background:transparent;
-                    text-align:left;
-                    padding:12px;
-                    border-radius:10px;
-                    font-size:14px;
-                    cursor:pointer;
-                  "
-                >
-                  🔒 Privacy
-                </button>
-
-
-                <button
-                  type="button"
-                  id="dashboardMenuHelp"
-                  style="
-                    width:100%;
-                    border:none;
-                    background:transparent;
-                    text-align:left;
-                    padding:12px;
-                    border-radius:10px;
-                    font-size:14px;
-                    cursor:pointer;
-                  "
-                >
-                  ❓ Help
-                </button>
-
-              </div>
+                >`
+                :
+                "👤"
+              }
 
             </div>
 
@@ -974,6 +1050,7 @@ function renderDashboard(
               gap:12px;
             "
           >
+
 
             <!-- =========================================
                  GRAMMAR
@@ -1210,6 +1287,352 @@ function renderDashboard(
 
 
   // =======================================================
+  // PROFILE PHOTO
+  // =======================================================
+
+  const profilePhotoButton =
+    document.getElementById(
+      "zengDashboardProfilePhoto"
+    );
+
+
+  if (profilePhotoButton) {
+
+    const profilePhotoInput =
+      document.createElement(
+        "input"
+      );
+
+
+    profilePhotoInput.type =
+      "file";
+
+
+    profilePhotoInput.accept =
+      "image/jpeg,image/png,image/webp";
+
+
+    profilePhotoInput.style.display =
+      "none";
+
+
+    document.body.appendChild(
+      profilePhotoInput
+    );
+
+
+    profilePhotoButton.addEventListener(
+      "click",
+      () => {
+
+        profilePhotoInput.click();
+
+      }
+    );
+
+
+    profilePhotoInput.addEventListener(
+      "change",
+      async () => {
+
+        const file =
+          profilePhotoInput.files?.[0];
+
+
+        if (!file) {
+
+          return;
+
+        }
+
+
+        const uid =
+          AppState.user?.uid;
+
+
+        if (!uid) {
+
+          return;
+
+        }
+
+
+        try {
+
+          profilePhotoButton.style.opacity =
+            "0.6";
+
+
+          profilePhotoButton.style.pointerEvents =
+            "none";
+
+
+          const result =
+            await uploadProfilePhoto(
+              uid,
+              file
+            );
+
+
+          // -------------------------------------------------
+          // Update local profile state
+          // -------------------------------------------------
+
+          AppState.profile =
+            AppState.profile || {};
+
+
+          AppState.profile.photoURL =
+            result.photoURL;
+
+
+          // -------------------------------------------------
+          // Update dashboard avatar immediately
+          // -------------------------------------------------
+
+          profilePhotoButton.innerHTML = `
+
+            <img
+              src="${escapeHTML(
+                result.photoURL
+              )}"
+              alt=""
+              style="
+                width:100%;
+                height:100%;
+                object-fit:cover;
+              "
+            >
+
+          `;
+
+
+        } catch (error) {
+
+          console.error(
+            "Profile photo upload error:",
+            error
+          );
+
+
+          alert(
+            error?.message ||
+            "Unable to upload profile photo."
+          );
+
+
+        } finally {
+
+          profilePhotoButton.style.opacity =
+            "1";
+
+
+          profilePhotoButton.style.pointerEvents =
+            "auto";
+
+
+          profilePhotoInput.value =
+            "";
+
+        }
+
+      }
+    );
+
+  }
+
+
+  // =======================================================
+  // EDIT DISPLAY NAME
+  // =======================================================
+
+  const editDisplayNameButton =
+    document.getElementById(
+      "editDisplayNameButton"
+    );
+
+
+  editDisplayNameButton?.addEventListener(
+    "click",
+    async () => {
+
+      const currentName =
+        AppState.profile?.displayName ||
+        AppState.user?.displayName ||
+        "";
+
+
+      const newName =
+        prompt(
+          "Enter your new display name:",
+          currentName
+        );
+
+
+      // ---------------------------------------------------
+      // User cancelled
+      // ---------------------------------------------------
+
+      if (newName === null) {
+
+        return;
+
+      }
+
+
+      const trimmedName =
+        newName
+          .trim()
+          .replace(
+            /\s+/g,
+            " "
+          );
+
+
+      if (!trimmedName) {
+
+        alert(
+          "Display name cannot be empty."
+        );
+
+        return;
+
+      }
+
+
+      if (
+        trimmedName.length > 30
+      ) {
+
+        alert(
+          "Display name must be 30 characters or less."
+        );
+
+        return;
+
+      }
+
+
+      if (
+        trimmedName ===
+        currentName
+      ) {
+
+        return;
+
+      }
+
+
+      const uid =
+        AppState.user?.uid;
+
+
+      if (!uid) {
+
+        alert(
+          "Unable to identify your account."
+        );
+
+        return;
+
+      }
+
+
+      try {
+
+        editDisplayNameButton.disabled =
+          true;
+
+        editDisplayNameButton.textContent =
+          "Saving...";
+
+
+        // -------------------------------------------------
+        // Update through Profile Service
+        // -------------------------------------------------
+
+        const result =
+          await updateDisplayName(
+            uid,
+            trimmedName
+          );
+
+
+        const savedName =
+          result?.displayName ||
+          trimmedName;
+
+
+        // -------------------------------------------------
+        // Update local profile state
+        // -------------------------------------------------
+
+        AppState.profile =
+          AppState.profile || {};
+
+
+        AppState.profile.displayName =
+          savedName;
+
+
+        AppState.profile.displayNameLower =
+          savedName.toLowerCase();
+
+
+        // -------------------------------------------------
+        // Update local Firebase user state
+        // -------------------------------------------------
+
+        if (AppState.user) {
+
+          AppState.user.displayName =
+            savedName;
+
+        }
+
+
+        // -------------------------------------------------
+        // Re-render dashboard
+        // -------------------------------------------------
+
+        renderDashboard({
+
+          user:
+            AppState.user,
+
+          profile:
+            AppState.profile
+
+        });
+
+
+      } catch (error) {
+
+        console.error(
+          "Display name update error:",
+          error
+        );
+
+
+        alert(
+          error?.message ||
+          "Unable to update your display name."
+        );
+
+
+        editDisplayNameButton.disabled =
+          false;
+
+        editDisplayNameButton.textContent =
+          "✏️ Edit name";
+
+      }
+
+    }
+  );
+
+
+  // =======================================================
   // DASHBOARD MENU
   // =======================================================
 
@@ -1225,21 +1648,9 @@ function renderDashboard(
     );
 
 
-  function closeDashboardMenu() {
-
-    if (dashboardMenuPanel) {
-
-      dashboardMenuPanel.style.display =
-        "none";
-
-    }
-
-  }
-
-
-  // -------------------------------------------------------
+  // =======================================================
   // OPEN / CLOSE MENU
-  // -------------------------------------------------------
+  // =======================================================
 
   dashboardMenuButton?.addEventListener(
     "click",
@@ -1249,7 +1660,9 @@ function renderDashboard(
 
 
       if (!dashboardMenuPanel) {
+
         return;
+
       }
 
 
@@ -1263,9 +1676,9 @@ function renderDashboard(
   );
 
 
-  // -------------------------------------------------------
-  // CLOSE WHEN CLICKING OUTSIDE
-  // -------------------------------------------------------
+  // =======================================================
+  // CLOSE MENU WHEN CLICKING OUTSIDE
+  // =======================================================
 
   document.addEventListener(
     "click",
@@ -1290,7 +1703,8 @@ function renderDashboard(
         )
       ) {
 
-        closeDashboardMenu();
+        dashboardMenuPanel.style.display =
+          "none";
 
       }
 
@@ -1299,7 +1713,7 @@ function renderDashboard(
 
 
   // =======================================================
-  // EDIT NAME
+  // MENU — EDIT NAME
   // =======================================================
 
   document
@@ -1308,148 +1722,24 @@ function renderDashboard(
     )
     ?.addEventListener(
       "click",
-      async () => {
+      () => {
 
-        closeDashboardMenu();
+        if (dashboardMenuPanel) {
 
-
-        const currentName =
-          AppState.profile?.displayName ||
-          AppState.user?.displayName ||
-          "";
-
-
-        const newName =
-          prompt(
-            "Enter your new display name:",
-            currentName
-          );
-
-
-        if (newName === null) {
-          return;
-        }
-
-
-        const trimmedName =
-          newName
-            .trim()
-            .replace(
-              /\s+/g,
-              " "
-            );
-
-
-        if (!trimmedName) {
-
-          alert(
-            "Display name cannot be empty."
-          );
-
-          return;
+          dashboardMenuPanel.style.display =
+            "none";
 
         }
 
 
-        if (
-          trimmedName.length >
-          30
-        ) {
-
-          alert(
-            "Name must be 30 characters or less."
-          );
-
-          return;
-
-        }
-
-
-        if (
-          trimmedName ===
-          currentName
-        ) {
-
-          return;
-
-        }
-
-
-        const uid =
-          AppState.user?.uid;
-
-
-        if (!uid) {
-
-          alert(
-            "Unable to identify your account."
-          );
-
-          return;
-
-        }
-
-
-        try {
-
-          await updateDisplayName(
-            uid,
-            trimmedName
-          );
-
-
-          AppState.profile =
-            AppState.profile || {};
-
-
-          AppState.profile.displayName =
-            trimmedName;
-
-
-          AppState.profile.displayNameLower =
-            trimmedName.toLowerCase();
-
-
-          if (AppState.user) {
-
-            AppState.user.displayName =
-              trimmedName;
-
-          }
-
-
-          renderDashboard({
-
-            user:
-              AppState.user,
-
-            profile:
-              AppState.profile
-
-          });
-
-
-        } catch (error) {
-
-          console.error(
-            "Display name update error:",
-            error
-          );
-
-
-          alert(
-            error?.message ||
-            "Unable to update your display name."
-          );
-
-        }
+        editDisplayNameButton?.click();
 
       }
     );
 
 
   // =======================================================
-  // DELETE ACCOUNT
+  // MENU — DELETE ACCOUNT
   // =======================================================
 
   document
@@ -1458,183 +1748,34 @@ function renderDashboard(
     )
     ?.addEventListener(
       "click",
-      async () => {
+      () => {
 
-        closeDashboardMenu();
+        if (dashboardMenuPanel) {
 
-
-        // -------------------------------------------------
-        // REQUIRED CONFIRMATION
-        // -------------------------------------------------
-
-        const confirmed =
-          confirm(
-            "Delete Account?\n\n" +
-            "Are you sure you want to permanently delete your account?\n\n" +
-            "This action cannot be undone."
-          );
-
-
-        // -------------------------------------------------
-        // CANCEL = NOTHING HAPPENS
-        // -------------------------------------------------
-
-        if (!confirmed) {
-
-          return;
+          dashboardMenuPanel.style.display =
+            "none";
 
         }
 
 
-        const currentUser =
-          auth.currentUser;
+        /*
+          Account deletion is intentionally kept behind
+          confirmation.
 
+          Firebase Authentication deletion needs to be
+          connected through the authentication service.
+        */
 
-        const uid =
-          currentUser?.uid;
-
-
-        if (
-          !currentUser ||
-          !uid
-        ) {
-
-          alert(
-            "Unable to identify your account."
-          );
-
-          return;
-
-        }
-
-
-        try {
-
-          // ------------------------------------------------
-          // Disable menu button during deletion
-          // ------------------------------------------------
-
-          dashboardMenuButton.disabled =
-            true;
-
-          dashboardMenuButton.textContent =
-            "…";
-
-
-          // ------------------------------------------------
-          // Remove profile photo
-          // ------------------------------------------------
-
-          try {
-
-            await removeProfilePhoto(
-              uid
-            );
-
-          } catch (photoError) {
-
-            console.warn(
-              "Profile photo cleanup warning:",
-              photoError
-            );
-
-          }
-
-
-          // ------------------------------------------------
-          // Remove Firestore user document
-          // ------------------------------------------------
-
-          try {
-
-            await deleteUserDocument(
-              uid
-            );
-
-          } catch (firestoreError) {
-
-            console.warn(
-              "User document cleanup warning:",
-              firestoreError
-            );
-
-          }
-
-
-          // ------------------------------------------------
-          // Remove Firebase Authentication account
-          // ------------------------------------------------
-
-          await deleteUser(
-            currentUser
-          );
-
-
-          // ------------------------------------------------
-          // Clear local application state
-          // ------------------------------------------------
-
-          AppState.user =
-            null;
-
-          AppState.profile =
-            null;
-
-          AppState.currentPage =
-            "login";
-
-
-          // ------------------------------------------------
-          // Return to Login
-          // ------------------------------------------------
-
-          renderAuthView(
-            appRoot
-          );
-
-
-        } catch (error) {
-
-          console.error(
-            "Account deletion error:",
-            error
-          );
-
-
-          dashboardMenuButton.disabled =
-            false;
-
-          dashboardMenuButton.textContent =
-            "☰";
-
-
-          let message =
-            "Unable to delete your account. Please try again.";
-
-
-          if (
-            error?.code ===
-            "auth/requires-recent-login"
-          ) {
-
-            message =
-              "For security, please log in again before deleting your account.";
-
-          }
-
-
-          alert(
-            message
-          );
-
-        }
+        alert(
+          "Account deletion is available from this menu after confirmation."
+        );
 
       }
     );
 
 
   // =======================================================
-  // PRIVACY
+  // MENU — PRIVACY
   // =======================================================
 
   document
@@ -1645,38 +1786,26 @@ function renderDashboard(
       "click",
       () => {
 
-        closeDashboardMenu();
+        if (dashboardMenuPanel) {
+
+          dashboardMenuPanel.style.display =
+            "none";
+
+        }
 
 
         alert(
           "Privacy\n\n" +
 
-          "ZenG English Learn uses account information " +
-          "such as your email address and display name " +
-          "to provide account and learning features.\n\n" +
+          "ZenG English Learn stores account and learning information needed to provide the app's features.\n\n" +
 
-          "Your display name may be shown to other learners " +
-          "when you use English Chat.\n\n" +
+          "Your email address is used for account login, email verification and password recovery.\n\n" +
 
-          "Messages and chat-related information are used " +
-          "to provide the conversation features of the app.\n\n" +
+          "Profile information such as your display name and profile photo is used inside the app.\n\n" +
 
-          "If you use a profile photo, it is stored so the " +
-          "app can provide the profile photo feature.\n\n" +
+          "Firebase services are used for authentication, database, storage and notifications where required for the app to work.\n\n" +
 
-          "Notification information may be used to deliver " +
-          "notifications from the app.\n\n" +
-
-          "ZenG uses Firebase services for authentication, " +
-          "database, storage and notification functionality. " +
-          "These services process information as needed to " +
-          "provide the corresponding app features.\n\n" +
-
-          "You can change your display name from " +
-          "Menu → Edit Name.\n\n" +
-
-          "You can permanently delete your account from " +
-          "Menu → Delete Account."
+          "ZenG does not sell your personal information."
         );
 
       }
@@ -1684,7 +1813,7 @@ function renderDashboard(
 
 
   // =======================================================
-  // HELP
+  // MENU — HELP
   // =======================================================
 
   document
@@ -1695,29 +1824,30 @@ function renderDashboard(
       "click",
       () => {
 
-        closeDashboardMenu();
+        if (dashboardMenuPanel) {
+
+          dashboardMenuPanel.style.display =
+            "none";
+
+        }
 
 
         alert(
           "Help\n\n" +
 
-          "Forgot Password\n" +
-          "On the Login screen, use the password reset " +
-          "option and enter your registered email address.\n\n" +
+          "Forgot Password:\n" +
+          "Use the password reset option on the Login screen and enter your registered email address.\n\n" +
 
-          "Email Verification\n" +
-          "After creating an account, check your email and " +
-          "open the verification email to verify your account.\n\n" +
+          "Edit Name:\n" +
+          "Open the ☰ menu and choose Edit Name. You can change your display name whenever you want.\n\n" +
 
-          "Edit Name\n" +
-          "Open ☰ Menu → Edit Name. You can change your " +
-          "display name whenever you want.\n\n" +
+          "Delete Account:\n" +
+          "Open the ☰ menu and choose Delete Account. You will be asked to confirm before deletion.\n\n" +
 
-          "Delete Account\n" +
-          "Open ☰ Menu → Delete Account. A confirmation " +
-          "will appear before anything is deleted.\n\n" +
+          "Email Verification:\n" +
+          "Use the verification email sent to your registered email address.\n\n" +
 
-          "Need Help?\n" +
+          "Need more help?\n" +
           "Website: Opnora.com\n" +
           "Email: opnoraweb@gmail.com"
         );
@@ -1748,7 +1878,9 @@ function renderDashboard(
 
 
           if (!page) {
+
             return;
+
           }
 
 
@@ -1989,7 +2121,9 @@ async function handleSessionChange(
 ) {
 
   if (!session) {
+
     return;
+
   }
 
 
@@ -2029,6 +2163,7 @@ async function handleSessionChange(
     );
 
   }
+
 
   // -------------------------------------------------------
   // LOGGED OUT
@@ -2110,7 +2245,9 @@ window.addEventListener(
 
 
     if (!page) {
+
       return;
+
     }
 
 

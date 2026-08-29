@@ -17,9 +17,9 @@ import {
 } from "./services/notification-service.js";
 
 import {
-  renderAuthView
+  renderAuthView,
+  renderVerificationView
 } from "./services/auth-ui-service.js";
-
 
 // =========================================================
 // PROFILE PHOTO SERVICE
@@ -1524,6 +1524,23 @@ function renderDashboard(
 
 }
 
+// -------------------------------------------------------
+  // EMAIL VERIFICATION
+  // -------------------------------------------------------
+
+  if (
+    session.user &&
+    !session.user.emailVerified
+  ) {
+
+    renderVerificationView(
+      appRoot,
+      session.user.email || ""
+    );
+
+    return;
+
+  }
 
 // =========================================================
 // AUTHENTICATED USER

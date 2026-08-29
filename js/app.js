@@ -712,64 +712,258 @@ function renderDashboard(
           "
         >
 
-          <!-- ===========================================
-               HEADER
-               =========================================== -->
+         <!-- ===========================================
+     HEADER
+     =========================================== -->
 
-          <div
-            style="
-              display:flex;
-              align-items:center;
-              justify-content:space-between;
-              gap:12px;
-              margin-bottom:20px;
-            "
-          >
-
-            <div>
-
-              <div
-                style="
-                  font-size:13px;
-                  color:var(--text-secondary);
-                "
-              >
-                ZenG English Learn
-              </div>
-
-
-              <div
-                style="
-                  margin-top:3px;
-                  font-size:24px;
-                  font-weight:800;
-                  color:var(--primary);
-                "
-              >
-                Hello,
-                ${escapeHTML(displayName)}
-                👋
-              </div>
-
-            </div>
-
-<button
-  type="button"
-  id="editDisplayNameButton"
+<div
   style="
-    margin-top:6px;
-    border:none;
-    background:transparent;
-    color:var(--primary);
-    font-size:12px;
-    font-weight:700;
-    cursor:pointer;
-    padding:2px 0;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:20px;
   "
 >
-  ✏️ Edit name
-</button>
 
+  <!-- =========================================
+       LEFT SIDE — TITLE + NAME
+       ========================================= -->
+
+  <div
+    style="
+      min-width:0;
+    "
+  >
+
+    <div
+      style="
+        font-size:13px;
+        color:var(--text-secondary);
+      "
+    >
+      ZenG English Learn
+    </div>
+
+
+    <div
+      style="
+        margin-top:3px;
+        font-size:24px;
+        font-weight:800;
+        color:var(--primary);
+      "
+    >
+      Hello,
+      ${escapeHTML(displayName)}
+      👋
+    </div>
+
+
+    <button
+      type="button"
+      id="editDisplayNameButton"
+      style="
+        margin-top:6px;
+        border:none;
+        background:transparent;
+        color:var(--primary);
+        font-size:12px;
+        font-weight:700;
+        cursor:pointer;
+        padding:2px 0;
+      "
+    >
+      ✏️ Edit name
+    </button>
+
+  </div>
+
+
+  <!-- =========================================
+       RIGHT SIDE — MENU + PROFILE PHOTO
+       ========================================= -->
+
+  <div
+    style="
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-shrink:0;
+    "
+  >
+
+    <!-- DASHBOARD MENU -->
+
+    <div
+      style="
+        position:relative;
+      "
+    >
+
+      <button
+        type="button"
+        id="dashboardMenuButton"
+        aria-label="Menu"
+        style="
+          width:40px;
+          height:40px;
+          border:none;
+          border-radius:12px;
+          background:var(--surface-soft);
+          color:var(--text);
+          font-size:22px;
+          cursor:pointer;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        "
+      >
+        ☰
+      </button>
+
+
+      <!-- DASHBOARD MENU PANEL -->
+
+      <div
+        id="dashboardMenuPanel"
+        style="
+          display:none;
+          position:absolute;
+          top:46px;
+          right:0;
+          z-index:1000;
+          width:210px;
+          padding:8px;
+          background:var(--surface);
+          border:1px solid var(--border);
+          border-radius:14px;
+          box-shadow:0 8px 24px rgba(0,0,0,0.12);
+        "
+      >
+
+        <button
+          type="button"
+          id="dashboardMenuEditName"
+          style="
+            width:100%;
+            border:none;
+            background:transparent;
+            text-align:left;
+            padding:11px 12px;
+            border-radius:10px;
+            font-size:14px;
+            cursor:pointer;
+          "
+        >
+          ✏️ Edit Name
+        </button>
+
+
+        <button
+          type="button"
+          id="dashboardMenuDeleteAccount"
+          style="
+            width:100%;
+            border:none;
+            background:transparent;
+            text-align:left;
+            padding:11px 12px;
+            border-radius:10px;
+            font-size:14px;
+            cursor:pointer;
+          "
+        >
+          🗑️ Delete Account
+        </button>
+
+
+        <button
+          type="button"
+          id="dashboardMenuPrivacy"
+          style="
+            width:100%;
+            border:none;
+            background:transparent;
+            text-align:left;
+            padding:11px 12px;
+            border-radius:10px;
+            font-size:14px;
+            cursor:pointer;
+          "
+        >
+          🔒 Privacy
+        </button>
+
+
+        <button
+          type="button"
+          id="dashboardMenuHelp"
+          style="
+            width:100%;
+            border:none;
+            background:transparent;
+            text-align:left;
+            padding:11px 12px;
+            border-radius:10px;
+            font-size:14px;
+            cursor:pointer;
+          "
+        >
+          ❓ Help
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================================
+         DASHBOARD PROFILE PHOTO
+         ========================================= -->
+
+    <div
+      id="zengDashboardProfilePhoto"
+      style="
+        width:48px;
+        height:48px;
+        border-radius:50%;
+        background:var(--surface-soft);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        overflow:hidden;
+        font-size:24px;
+        flex-shrink:0;
+        cursor:pointer;
+      "
+      aria-label="Profile"
+      title="Change profile photo"
+    >
+
+      ${
+        profile.photoURL
+        ?
+        `<img
+          src="${escapeHTML(
+            profile.photoURL
+          )}"
+          alt=""
+          style="
+            width:100%;
+            height:100%;
+            object-fit:cover;
+          "
+        >`
+        :
+        "👤"
+      }
+
+    </div>
+
+  </div>
+
+</div>
             <!-- =========================================
                  DASHBOARD PROFILE PHOTO
                  ========================================= -->
@@ -1489,6 +1683,158 @@ function renderDashboard(
 
     }
   );
+
+
+  // =======================================================
+  // DASHBOARD MENU
+  // =======================================================
+
+  const dashboardMenuButton =
+    document.getElementById(
+      "dashboardMenuButton"
+    );
+
+
+  const dashboardMenuPanel =
+    document.getElementById(
+      "dashboardMenuPanel"
+    );
+
+
+  // -------------------------------------------------------
+  // OPEN / CLOSE MENU
+  // -------------------------------------------------------
+
+  dashboardMenuButton?.addEventListener(
+    "click",
+    (event) => {
+
+      event.stopPropagation();
+
+
+      if (!dashboardMenuPanel) {
+        return;
+      }
+
+
+      dashboardMenuPanel.style.display =
+        dashboardMenuPanel.style.display ===
+        "block"
+          ? "none"
+          : "block";
+
+    }
+  );
+
+
+  // -------------------------------------------------------
+  // CLOSE MENU WHEN CLICKING OUTSIDE
+  // -------------------------------------------------------
+
+  document.addEventListener(
+    "click",
+    (event) => {
+
+      if (
+        !dashboardMenuPanel ||
+        !dashboardMenuButton
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        !dashboardMenuPanel.contains(
+          event.target
+        ) &&
+        !dashboardMenuButton.contains(
+          event.target
+        )
+      ) {
+
+        dashboardMenuPanel.style.display =
+          "none";
+
+      }
+
+    }
+  );
+
+
+  // -------------------------------------------------------
+  // EDIT NAME
+  // -------------------------------------------------------
+
+  document
+    .getElementById(
+      "dashboardMenuEditName"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        dashboardMenuPanel.style.display =
+          "none";
+
+
+        editDisplayNameButton?.click();
+
+      }
+    );
+
+
+  // -------------------------------------------------------
+  // PRIVACY
+  // -------------------------------------------------------
+
+  document
+    .getElementById(
+      "dashboardMenuPrivacy"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        dashboardMenuPanel.style.display =
+          "none";
+
+
+        alert(
+          "Privacy information will be available here."
+        );
+
+      }
+    );
+
+
+  // -------------------------------------------------------
+  // HELP
+  // -------------------------------------------------------
+
+  document
+    .getElementById(
+      "dashboardMenuHelp"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        dashboardMenuPanel.style.display =
+          "none";
+
+
+        alert(
+          "Help\n\n" +
+          "• Forgot Password: Use the password reset option on the Login screen and enter your email.\n\n" +
+          "• Edit Name: Open the ☰ menu and choose Edit Name.\n\n" +
+          "• Delete Account: Open the ☰ menu and choose Delete Account.\n\n" +
+          "• Email Verification: Verify your email using the verification email sent by ZenG."
+        );
+
+      }
+    );
   
   // =======================================================
   // DASHBOARD NAVIGATION

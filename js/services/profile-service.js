@@ -47,6 +47,14 @@ const ALLOWED_IMAGE_TYPES = [
 
 
 // =========================================================
+// DISPLAY NAME VALIDATION
+// =========================================================
+
+const MAX_DISPLAY_NAME_LENGTH =
+  30;
+
+
+// =========================================================
 // VALIDATE PHOTO
 // =========================================================
 
@@ -77,6 +85,119 @@ function validateProfilePhoto(file) {
   }
 
   return true;
+}
+
+
+// =========================================================
+// VALIDATE DISPLAY NAME
+// =========================================================
+
+function validateDisplayName(
+  displayName
+) {
+
+  const name =
+    String(
+      displayName || ""
+    ).trim();
+
+
+  if (!name) {
+
+    throw new Error(
+      "Please enter your name."
+    );
+
+  }
+
+
+  if (
+    name.length >
+    MAX_DISPLAY_NAME_LENGTH
+  ) {
+
+    throw new Error(
+      `Name must be ${MAX_DISPLAY_NAME_LENGTH} characters or less.`
+    );
+
+  }
+
+
+  return name;
+
+}
+
+
+// =========================================================
+// UPDATE DISPLAY NAME
+// =========================================================
+//
+// Updates BOTH:
+// 1. Firebase Authentication profile
+// 2. Firestore user profile
+//
+// Every time the user saves a new name, the latest
+// name becomes the active name.
+//
+
+async function updateDisplayName(
+  uid,
+  displayName
+) {
+
+  if (!uid) {
+
+    throw new Error(
+      "User UID is required."
+    );
+
+  }
+
+
+  const name =
+    validateDisplayName(
+      displayName
+    );
+
+
+  // -------------------------------------------------------
+  // Update Firebase Authentication profile
+  // -------------------------------------------------------
+
+  if (
+    auth.currentUser &&
+    auth.currentUser.uid === uid
+  ) {
+
+    await updateProfile(
+      auth.currentUser,
+      {
+        displayName: name
+      }
+    );
+
+  }
+
+
+  // -------------------------------------------------------
+  // Update Firestore user profile
+  // -------------------------------------------------------
+
+  await updateUserDocument(
+    uid,
+    {
+      displayName: name,
+
+      displayNameLower:
+        name.toLowerCase()
+    }
+  );
+
+
+  return {
+    displayName: name
+  };
+
 }
 
 
@@ -131,7 +252,10 @@ async function uploadProfilePhoto(
     );
 
 
+  // -------------------------------------------------------
   // Update Firebase Authentication profile
+  // -------------------------------------------------------
+
   if (
     auth.currentUser &&
     auth.currentUser.uid === uid
@@ -147,7 +271,10 @@ async function uploadProfilePhoto(
   }
 
 
+  // -------------------------------------------------------
   // Update Firestore user profile
+  // -------------------------------------------------------
+
   await updateUserDocument(
     uid,
     {
@@ -160,6 +287,7 @@ async function uploadProfilePhoto(
     photoURL,
     storagePath
   };
+
 }
 
 
@@ -235,7 +363,10 @@ async function removeProfilePhoto(
   }
 
 
+  // -------------------------------------------------------
   // Remove photo from Firebase Auth profile
+  // -------------------------------------------------------
+
   if (
     auth.currentUser &&
     auth.currentUser.uid === uid
@@ -251,7 +382,10 @@ async function removeProfilePhoto(
   }
 
 
+  // -------------------------------------------------------
   // Remove photo from Firestore
+  // -------------------------------------------------------
+
   await updateUserDocument(
     uid,
     {
@@ -261,6 +395,7 @@ async function removeProfilePhoto(
 
 
   return true;
+
 }
 
 
@@ -271,16 +406,21 @@ async function removeProfilePhoto(
 // UI can use this whenever photoURL is empty.
 //
 
-function getDefaultAvatar(displayName = "") {
+function getDefaultAvatar(
+  displayName = ""
+) {
 
   const firstCharacter =
-    String(displayName || "U")
+    String(
+      displayName || "U"
+    )
       .trim()
       .charAt(0)
       .toUpperCase();
 
 
   return firstCharacter || "U";
+
 }
 
 
@@ -289,15 +429,22 @@ function getDefaultAvatar(displayName = "") {
 // =========================================================
 
 export {
+
   PROFILE_PHOTO_FOLDER,
 
   MAX_PHOTO_SIZE,
   ALLOWED_IMAGE_TYPES,
 
+  MAX_DISPLAY_NAME_LENGTH,
+
   validateProfilePhoto,
+  validateDisplayName,
+
+  updateDisplayName,
 
   uploadProfilePhoto,
   removeProfilePhoto,
 
   getDefaultAvatar
+
 };

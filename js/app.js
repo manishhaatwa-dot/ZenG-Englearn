@@ -891,23 +891,7 @@ function renderDashboard(
               </div>
 
 
-              <button
-                type="button"
-                id="editDisplayNameButton"
-                style="
-                  margin-top:6px;
-                  border:none;
-                  background:transparent;
-                  color:var(--primary);
-                  font-size:12px;
-                  font-weight:700;
-                  cursor:pointer;
-                  padding:2px 0;
-                "
-              >
-                ✏️ Edit name
-              </button>
-
+             
             </div>
 
 

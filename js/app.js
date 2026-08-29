@@ -21,6 +21,7 @@ import {
   renderVerificationView
 } from "./services/auth-ui-service.js";
 
+
 // =========================================================
 // PROFILE PHOTO SERVICE
 // =========================================================
@@ -1448,11 +1449,6 @@ function renderDashboard(
   // =======================================================
   // PROFILE
   // =======================================================
-  //
-  // There is currently no profile-page.js.
-  // Keep the dashboard button harmless until a real
-  // profile module is created.
-  // =======================================================
 
   document
     .getElementById(
@@ -1524,23 +1520,6 @@ function renderDashboard(
 
 }
 
-// -------------------------------------------------------
-  // EMAIL VERIFICATION
-  // -------------------------------------------------------
-
-  if (
-    session.user &&
-    !session.user.emailVerified
-  ) {
-
-    renderVerificationView(
-      appRoot,
-      session.user.email || ""
-    );
-
-    return;
-
-  }
 
 // =========================================================
 // AUTHENTICATED USER
@@ -1550,12 +1529,79 @@ async function handleAuthenticatedUser(
   session
 ) {
 
+  const user =
+    session?.user;
+
+
+  if (!user) {
+
+    return;
+
+  }
+
+
+  // -------------------------------------------------------
+  // DEMO USER BYPASS
+  // -------------------------------------------------------
+  //
+  // Existing demo users can be marked with:
+  //
+  // profile.isDemo === true
+  //
+  // or
+  //
+  // user.isDemo === true
+  //
+  // Real users must verify their email.
+  //
+
+  const isDemoUser =
+    user.isDemo === true ||
+    session?.profile?.isDemo === true;
+
+
+  // -------------------------------------------------------
+  // EMAIL VERIFICATION
+  // -------------------------------------------------------
+
+  if (
+    !isDemoUser &&
+    !user.emailVerified
+  ) {
+
+    AppState.user =
+      user;
+
+
+    AppState.profile =
+      session?.profile || {};
+
+
+    AppState.currentPage =
+      "verification";
+
+
+    renderVerificationView(
+      appRoot,
+      user.email || ""
+    );
+
+
+    return;
+
+  }
+
+
+  // -------------------------------------------------------
+  // VERIFIED / DEMO USER
+  // -------------------------------------------------------
+
   AppState.user =
-    session.user;
+    user;
 
 
   AppState.profile =
-    session.profile || {};
+    session?.profile || {};
 
 
   AppState.currentPage =
@@ -1695,6 +1741,57 @@ async function handleSessionChange(
   hideSplash();
 
 }
+
+
+// =========================================================
+// EMAIL VERIFICATION COMPLETED
+// =========================================================
+
+window.addEventListener(
+  "zeng:auth-verified",
+  async () => {
+
+    try {
+
+      const {
+        getCurrentAuthUser
+      } = await import(
+        "./services/auth-service.js"
+      );
+
+
+      const user =
+        getCurrentAuthUser();
+
+
+      if (!user) {
+
+        return;
+
+      }
+
+
+      await handleAuthenticatedUser({
+
+        user,
+
+        profile:
+          AppState.profile || {}
+
+      });
+
+
+    } catch (error) {
+
+      console.error(
+        "Unable to continue after email verification:",
+        error
+      );
+
+    }
+
+  }
+);
 
 
 // =========================================================

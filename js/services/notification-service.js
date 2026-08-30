@@ -30,7 +30,7 @@ import {
 //
 
 const FCM_VAPID_KEY =
-  "YOUR_FIREBASE_PUBLIC_VAPID_KEY";
+  "BPJ0z3Scf3gMG30pwgODae6j3vwxGXIlWmATXKQoWM2kOIxkMnWn-XPsx2Uyxrz1zfVEleVQdQVXJMAElUcC9dw";
 
 
 // =========================================================
@@ -116,7 +116,7 @@ async function getDeviceToken(
 
   if (
     FCM_VAPID_KEY ===
-    "BPJ0z3Scf3gMG30pwgODae6j3vwxGXIlWmATXKQoWM2kOIxkMnWn-XPsx2Uyxrz1zfVEleVQdQVXJMAElUcC9dw"
+    ""
   ) {
 
     console.warn(

@@ -4881,6 +4881,81 @@ async function sendMessage(
     // =====================================================
 
     await batch.commit();
+    // ---------------------------------------------------
+// Immediately show the newly sent message in the
+// currently open chat.
+// This is especially important for the first message
+// of a brand-new conversation.
+// ---------------------------------------------------
+
+const messagesBox =
+  container.querySelector(
+    "#zengMessages"
+  );
+
+if (messagesBox) {
+
+  const currentMessages =
+    messagesBox.querySelectorAll(
+      ".zeng-message-row"
+    );
+
+  // Only add locally when this is the first
+  // message and the listener has not rendered it yet.
+  if (
+    !chatInfo.exists &&
+    currentMessages.length === 0
+  ) {
+
+    messagesBox.innerHTML = `
+
+      <div
+        class="zeng-message-row mine"
+      >
+
+        <div
+          class="zeng-message mine"
+        >
+
+          <div class="zeng-message-content">
+
+            <div class="zeng-message-text">
+              ${escapeHTML(text)}
+            </div>
+
+            <div class="zeng-message-meta">
+
+              <span>
+                ${escapeHTML(
+                  formatTime({
+                    toDate: () => now
+                  })
+                )}
+              </span>
+
+              <span
+                class="zeng-seen"
+                title="Sent"
+              >
+                ✓
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    `;
+
+    messagesBox.scrollTop =
+      messagesBox.scrollHeight;
+
+  }
+
+}
     
 
 

@@ -4763,7 +4763,7 @@ async function sendMessage(
 
 
     const now =
-      serverTimestamp();
+      new Date();
 
 
     const batch =
@@ -4881,6 +4881,7 @@ async function sendMessage(
     // =====================================================
 
     await batch.commit();
+    
 
 
     // ---------------------------------------------------

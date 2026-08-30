@@ -5,6 +5,7 @@
 
 import {
   getToken,
+  deleteToken,
   onMessage
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-messaging.js";
 
@@ -24,10 +25,6 @@ import {
 // =========================================================
 // FCM CONFIGURATION
 // =========================================================
-//
-// Firebase Console se actual PUBLIC VAPID key baad me
-// yahan add karenge.
-//
 
 const FCM_VAPID_KEY =
   "BPJ0z3Scf3gMG30pwgODae6j3vwxGXIlWmATXKQoWM2kOIxkMnWn-XPsx2Uyxrz1zfVEleVQdQVXJMAElUcC9dw";
@@ -115,12 +112,11 @@ async function getDeviceToken(
 
 
   if (
-    FCM_VAPID_KEY ===
-    ""
+    !FCM_VAPID_KEY
   ) {
 
     console.warn(
-      "FCM VAPID key is not configured yet."
+      "FCM VAPID key is not configured."
     );
 
     return null;
@@ -148,24 +144,46 @@ async function getDeviceToken(
     "granted"
   ) {
 
+    console.warn(
+      "FCM notification permission:",
+      permission
+    );
+
     return null;
 
   }
 
 
-  const token =
-    await getToken(
-      messaging,
-      {
-        vapidKey:
-          FCM_VAPID_KEY,
+  // -------------------------------------------------------
+  // FIRST TOKEN ATTEMPT
+  // -------------------------------------------------------
 
-        serviceWorkerRegistration
-      }
-    );
+  try {
+
+    const token =
+      await getToken(
+        messaging,
+        {
+          vapidKey:
+            FCM_VAPID_KEY,
+
+          serviceWorkerRegistration
+        }
+      );
 
 
-  if (!token) {
+    if (
+      token
+    ) {
+
+      console.log(
+        "FCM token generated successfully."
+      );
+
+      return token;
+
+    }
+
 
     console.warn(
       "Firebase did not return an FCM token."
@@ -173,10 +191,102 @@ async function getDeviceToken(
 
     return null;
 
+  } catch (error) {
+
+    console.warn(
+      "FCM token generation failed:",
+      error
+    );
+
+
+    const errorText =
+      String(
+        error?.message ||
+        error ||
+        ""
+      ).toLowerCase();
+
+
+    // -----------------------------------------------------
+    // RECOVERY FOR STALE / TOO-MANY REGISTRATIONS
+    // -----------------------------------------------------
+    //
+    // Some browsers can retain an old FCM registration.
+    // Clear the current local FCM token and retry once.
+    //
+    // -----------------------------------------------------
+
+    if (
+
+      errorText.includes(
+        "too-many"
+      )
+
+      ||
+
+      errorText.includes(
+        "registration"
+      )
+
+      ||
+
+      errorText.includes(
+        "token-subscribe"
+      )
+
+    ) {
+
+      console.warn(
+        "Attempting FCM registration recovery..."
+      );
+
+
+      try {
+
+        await deleteToken(
+          messaging
+        );
+
+
+        const retryToken =
+          await getToken(
+            messaging,
+            {
+              vapidKey:
+                FCM_VAPID_KEY,
+
+              serviceWorkerRegistration
+            }
+          );
+
+
+        if (
+          retryToken
+        ) {
+
+          console.log(
+            "FCM token generated after recovery."
+          );
+
+          return retryToken;
+
+        }
+
+      } catch (retryError) {
+
+        console.error(
+          "FCM recovery failed:",
+          retryError
+        );
+
+      }
+
+    }
+
+
+    throw error;
+
   }
-
-
-  return token;
 
 }
 
@@ -230,6 +340,11 @@ async function saveDeviceToken(
     {
       merge: true
     }
+  );
+
+
+  console.log(
+    "FCM device token saved successfully."
   );
 
 

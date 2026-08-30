@@ -2,5 +2,14 @@
   "functions": {
     "source": "functions",
     "runtime": "nodejs24"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": false
   }
 }

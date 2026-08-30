@@ -16,3 +16,9 @@ pnpm-debug.log*
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+zeng-release.keystore
+
+.gradle/
+build/
+*.keystore
+*.apk

@@ -16,11 +16,11 @@
   "iconUrl": "https://zengenglearn.opnora.com/icons/icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
-    "path": "/workspaces/ZenG-Englearn/zeng-release.keystore",
+    "path": "/workspaces/ZenG-Englearn/zeng-final-playstore.jks",
     "alias": "android"
   },
-  "appVersionName": "1",
-  "appVersionCode": 1,
+  "appVersionName": "4",
+  "appVersionCode": 4,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://zengenglearn.opnora.com/manifest.json",
@@ -42,5 +42,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1"
+  "appVersion": "4"
 }

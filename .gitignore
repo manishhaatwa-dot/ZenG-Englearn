@@ -22,3 +22,11 @@ zeng-release.keystore
 build/
 *.keystore
 *.apk
+
+*.jks
+*.keystore
+*.apk
+app-release-bundle.aab
+.gradle/
+build/
+*.idsig

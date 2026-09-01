@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>ZenG English Learn - Feedback</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+      color: #222;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    label {
+      display: block;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 24px;
+      padding: 13px;
+      border: 0;
+      border-radius: 8px;
+      background: #222;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .note {
+      margin-top: 20px;
+      font-size: 13px;
+      color: #666;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="card">
+
+      <h1>ZenG English Learn</h1>
+
+      <p class="subtitle">
+        We would love to hear your feedback.
+      </p>
+
+      <form id="feedbackForm">
+
+        <label for="email">
+          Your Email
+        </label>
+
+        <input
+          type="email"
+          id="email"
+          placeholder="Enter your email"
+          required
+        >
+
+
+        <label for="type">
+          Feedback Type
+        </label>
+
+        <select id="type" required>
+
+          <option value="">
+            Select an option
+          </option>
+
+          <option value="General Feedback">
+            General Feedback
+          </option>
+
+          <option value="Bug Report">
+            Bug Report
+          </option>
+
+          <option value="Feature Request">
+            Feature Request
+          </option>
+
+          <option value="Other">
+            Other
+          </option>
+
+        </select>
+
+
+        <label for="message">
+          Your Feedback
+        </label>
+
+        <textarea
+          id="message"
+          placeholder="Write your feedback here..."
+          required
+        ></textarea>
+
+
+        <button type="submit">
+          Send Feedback
+        </button>
+
+      </form>
+
+      <p class="note">
+        Thank you for helping us improve ZenG English Learn.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <script>
+
+    const form =
+      document.getElementById("feedbackForm");
+
+
+    form.addEventListener(
+      "submit",
+      function(event) {
+
+        event.preventDefault();
+
+
+        const email =
+          document.getElementById("email").value.trim();
+
+
+        const type =
+          document.getElementById("type").value;
+
+
+        const message =
+          document.getElementById("message").value.trim();
+
+
+        const subject =
+          encodeURIComponent(
+            "ZenG English Learn - " + type
+          );
+
+
+        const body =
+          encodeURIComponent(
+            "Email: " +
+            email +
+            "\n\nFeedback:\n" +
+            message
+          );
+
+
+        window.location.href =
+          "mailto:opnoraweb@gmail.com" +
+          "?subject=" +
+          subject +
+          "&body=" +
+          body;
+
+      }
+    );
+
+  </script>
+
+</body>
+</html>
